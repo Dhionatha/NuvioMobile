@@ -53,7 +53,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +65,7 @@ import com.nuvio.app.core.ui.DialogSurface
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAuthError
 import com.nuvio.app.features.simkl.SimklAuthRepository
@@ -325,7 +325,7 @@ internal fun TrackingProviderCard(
     onDisconnect: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val actionScope = rememberCoroutineScope()
     val failedOpenBrowserMessage = stringResource(Res.string.settings_trakt_failed_open_browser)
     var browserError by rememberSaveable { mutableStateOf(false) }
@@ -347,9 +347,7 @@ internal fun TrackingProviderCard(
 
     fun openUrl(url: String?) {
         if (url.isNullOrBlank()) return
-        browserError = false
-        runCatching { uriHandler.openUri(url) }
-            .onFailure { browserError = true }
+        browserError = !urlOpener.open(url)
     }
 
     Box(
