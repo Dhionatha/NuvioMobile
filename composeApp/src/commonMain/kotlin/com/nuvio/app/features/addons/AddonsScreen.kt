@@ -40,7 +40,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +54,7 @@ import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -88,7 +88,7 @@ internal fun AddonsSettingsPageContent(
     }
 
     val uiState by AddonRepository.uiState.collectAsStateWithLifecycle()
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val coroutineScope = rememberCoroutineScope()
     var addonUrl by rememberSaveable { mutableStateOf("") }
     var formMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -173,9 +173,7 @@ internal fun AddonsSettingsPageContent(
                     },
                     onConfigureClick = if (showConfigureAction && !configureUrl.isNullOrBlank()) {
                         {
-                            runCatching {
-                                uriHandler.openUri(configureUrl)
-                            }
+                            urlOpener.open(configureUrl)
                         }
                     } else {
                         null

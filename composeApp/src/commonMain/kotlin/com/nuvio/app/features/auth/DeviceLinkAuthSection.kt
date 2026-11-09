@@ -20,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.auth.DeviceLinkAuthFailure
 import com.nuvio.app.core.auth.DeviceLinkAuthState
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_auth_link_cancel
 import nuvio.composeapp.generated.resources.compose_auth_link_code_expired
@@ -50,7 +50,7 @@ internal fun DeviceLinkAuthSection(
     onStart: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     var openFailed by remember(state) { mutableStateOf(false) }
 
     when (state) {
@@ -107,9 +107,7 @@ internal fun DeviceLinkAuthSection(
                     height = height,
                     scale = scale,
                     onClick = {
-                        openFailed = runCatching {
-                            uriHandler.openUri(state.verificationUrl)
-                        }.isFailure
+                        openFailed = !urlOpener.open(state.verificationUrl)
                     },
                 )
 

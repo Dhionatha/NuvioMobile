@@ -43,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +53,7 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.features.addons.httpRequestRaw
 import com.nuvio.app.features.membership.MembershipOverviewRepository
 import kotlinx.coroutines.launch
@@ -292,7 +292,7 @@ internal fun LazyListScope.supportersContributorsContent(
 private fun SupportersContributorsBody(
     isTablet: Boolean,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val scope = rememberCoroutineScope()
     val donateUrl = remember { CommunityConfig.DONATIONS_DONATE_URL.trim().removeSuffix("/") }
     val donationsConfigured = remember { CommunityConfig.DONATIONS_BASE_URL.trim().isNotBlank() }
@@ -391,7 +391,7 @@ private fun SupportersContributorsBody(
                 } else {
                     donateUrl
                 }
-                if (url.isNotBlank()) uriHandler.openUri(url)
+                if (url.isNotBlank()) urlOpener.open(url)
             },
             onRefresh = MembershipOverviewRepository::refresh,
         )
@@ -451,14 +451,14 @@ private fun SupportersContributorsBody(
             } else {
                 null
             },
-            onPrimaryAction = contributor.profileUrl?.let { url -> { uriHandler.openUri(url) } },
+            onPrimaryAction = contributor.profileUrl?.let { url -> { urlOpener.open(url) } },
             secondaryActionLabel = if (AppFeaturePolicy.donationActionsEnabled && supportUrl != null) {
                 stringResource(Res.string.action_donate)
             } else {
                 null
             },
             onSecondaryAction = if (AppFeaturePolicy.donationActionsEnabled) {
-                supportUrl?.let { url -> { uriHandler.openUri(url) } }
+                supportUrl?.let { url -> { urlOpener.open(url) } }
             } else {
                 null
             },
