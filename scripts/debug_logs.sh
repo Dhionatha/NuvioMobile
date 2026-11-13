@@ -10,7 +10,7 @@
 #
 #  Options:
 #    -s, --serial <id>     ADB device serial (optional, for multi-device)
-#    -p, --package <name>  Android package/applicationId (default: debug build)
+#    -p, --package <name>  Android package/applicationId (default: com.dhionatha.nuviodebug)
 #    -t, --tag <regex>     Additional logcat tag filter regex (default: all app)
 #        --p2p             Focus on Nuvio Engine startup/playback diagnostics
 #    -c, --clear           Clear logcat buffer before streaming
@@ -18,7 +18,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 
-PACKAGE="${NUVIO_LOG_PACKAGE:-com.nuviodebug.com}"
+PACKAGE="${NUVIO_LOG_PACKAGE:-com.dhionatha.nuviodebug}"
 SERIAL=""
 CLEAR_BUFFER=false
 TAG_FILTER=""
