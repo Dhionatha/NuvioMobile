@@ -71,7 +71,6 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -87,6 +86,7 @@ import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.DeviceLinkAuthRepository
 import com.nuvio.app.core.auth.DeviceLinkAuthState
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.features.settings.AppBrandWordmark
 import kotlin.math.abs
 import kotlin.math.cos
@@ -713,7 +713,7 @@ private fun AuthForm(
     onEmailBoundsChange: (Rect) -> Unit,
     onPasswordBoundsChange: (Rect) -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -773,7 +773,7 @@ private fun AuthForm(
             Spacer(modifier = Modifier.height(14.dp * scale))
             AuthTermsAcknowledgement(
                 scale = scale,
-                onTermsClick = { uriHandler.openUri("https://nuvio.tv/terms") },
+                onTermsClick = { urlOpener.open("https://nuvio.tv/terms") },
             )
         }
 

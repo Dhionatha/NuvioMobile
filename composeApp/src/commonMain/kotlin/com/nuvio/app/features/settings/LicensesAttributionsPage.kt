@@ -24,13 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.features.cloud.PremiumizeCloudLibraryPosterUrl
 import com.nuvio.app.features.cloud.TorboxCloudLibraryPosterUrl
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
@@ -182,7 +182,7 @@ private fun AttributionRow(
     item: AttributionItem,
     isTablet: Boolean,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val title = stringResource(item.titleRes)
     LinkedPlainRow(
         title = title,
@@ -210,7 +210,7 @@ private fun AttributionRow(
             }
             else -> null
         },
-        onOpen = { uriHandler.openUri(item.link) },
+        onOpen = { urlOpener.open(item.link) },
     )
 }
 
@@ -219,7 +219,7 @@ private fun LicenseRow(
     item: LicenseItem,
     isTablet: Boolean,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val itemBody = stringResource(item.bodyRes)
     val itemLicense = stringResource(item.licenseRes)
     val body = buildString {
@@ -232,7 +232,7 @@ private fun LicenseRow(
         body = body,
         link = item.link,
         isTablet = isTablet,
-        onOpen = { uriHandler.openUri(item.link) },
+        onOpen = { urlOpener.open(item.link) },
     )
 }
 
