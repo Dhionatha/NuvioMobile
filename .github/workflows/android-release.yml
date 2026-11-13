@@ -26,12 +26,12 @@ on:
         description: Build and attach the unsigned iOS IPA
         required: false
         type: boolean
-        default: true
+        default: false
       update_store:
-        description: Update store.json after publishing
+        description: Update store.json after publishing (iOS only)
         required: false
         type: boolean
-        default: true
+        default: false
       exclude_commits:
         description: Optional comma-separated commit hashes to omit from the notes
         required: false
