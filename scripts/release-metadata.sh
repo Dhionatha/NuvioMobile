@@ -4,6 +4,7 @@ set -euo pipefail
 
 version_file="${VERSION_FILE:-iosApp/Configuration/Version.xcconfig}"
 target_ref="${1:-HEAD}"
+tag_suffix="${TAG_SUFFIX:-}"
 
 if ! git cat-file -e "${target_ref}^{commit}" 2>/dev/null; then
     echo "Unknown release target: ${target_ref}" >&2
@@ -46,8 +47,17 @@ if [[ ! "$current_version" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
     exit 1
 fi
 
+if [[ ! "$tag_suffix" =~ ^[0-9A-Za-z._-]*$ ]]; then
+    echo "Invalid tag suffix: ${tag_suffix}" >&2
+    exit 1
+fi
+
+if [[ -n "$tag_suffix" && "$tag_suffix" != -* ]]; then
+    tag_suffix="-${tag_suffix}"
+fi
+
 printf 'version=%s\n' "$current_version"
-printf 'tag=%s-beta\n' "${current_version%-beta}"
+printf 'tag=%s%s-beta\n' "${current_version%-beta}" "${tag_suffix}"
 printf 'release_commit=%s\n' "$(git rev-parse "${target_ref}^{commit}")"
 printf 'current_bump=%s\n' "$current_bump"
 printf 'previous_version=%s\n' "$previous_version"
