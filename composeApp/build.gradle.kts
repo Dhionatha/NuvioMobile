@@ -119,6 +119,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |    const val CLIENT_ID = "${props.getProperty("SIMKL_CLIENT_ID", "")}"
                 |    const val REDIRECT_URI = "${props.getProperty("SIMKL_REDIRECT_URI", "nuvio://auth/simkl")}"
                 |    const val APP_NAME = "${props.getProperty("SIMKL_APP_NAME", "nuvio")}"
+                |    const val USE_OAUTH2 = ${props.getProperty("SIMKL_OAUTH2", "false").trim().toBoolean()}
                 |}
                 """.trimMargin()
             )
@@ -441,6 +442,7 @@ kotlin {
             dependencies {
                 implementation(libs.compose.uiToolingPreview)
                 implementation(libs.androidx.appcompat)
+                implementation(libs.androidx.browser)
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.core.splashscreen)
                 implementation(libs.androidx.work.runtime)

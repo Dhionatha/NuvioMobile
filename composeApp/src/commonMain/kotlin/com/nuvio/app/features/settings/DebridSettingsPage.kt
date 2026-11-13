@@ -22,6 +22,7 @@ import com.nuvio.app.core.ui.DialogButtonStyle
 import com.nuvio.app.core.ui.DialogOption
 import com.nuvio.app.core.ui.DialogSurface
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -551,10 +551,10 @@ internal fun LazyListScope.debridSettingsContent(
 
 private fun LazyListScope.debridLearnMoreFooterItem(isTablet: Boolean) {
     item {
-        val uriHandler = LocalUriHandler.current
+        val urlOpener = rememberExternalUrlOpener()
         DebridLearnMoreFooter(
             isTablet = isTablet,
-            onClick = { runCatching { uriHandler.openUri(CLOUD_SERVICES_FAQ_URL) } },
+            onClick = { urlOpener.open(CLOUD_SERVICES_FAQ_URL) },
         )
     }
 }
@@ -1305,7 +1305,7 @@ private fun DebridDeviceAuthDialog(
     onDisconnect: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
+    val urlOpener = rememberExternalUrlOpener()
     val clipboardManager = LocalClipboardManager.current
     val isConnected = currentValue.isNotBlank()
     var restartNonce by rememberSaveable(provider.id) { mutableStateOf(0) }
@@ -1530,8 +1530,9 @@ private fun DebridDeviceAuthDialog(
                 DialogButton(
                     text = stringResource(Res.string.settings_debrid_device_auth_open),
                     onClick = {
-                        runCatching { uriHandler.openUri(activeSession.verificationUrl) }
-                            .onFailure { statusMessage = failedMessage }
+                        if (!urlOpener.open(activeSession.verificationUrl)) {
+                            statusMessage = failedMessage
+                        }
                     },
                     enabled = !isStarting,
                     style = DialogButtonStyle.Primary,

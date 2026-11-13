@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
@@ -85,6 +84,7 @@ import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.platformExitApp
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.features.addons.AddAddonResult
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.enabledAddons
@@ -250,7 +250,7 @@ internal fun MainAppContent(
         }
         val hapticFeedback = LocalHapticFeedback.current
         val focusManager = LocalFocusManager.current
-        val uriHandler = LocalUriHandler.current
+        val urlOpener = rememberExternalUrlOpener()
         val coroutineScope = rememberCoroutineScope()
         var selectedTab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
         var searchFocusRequestCount by remember { mutableStateOf(0) }
@@ -876,9 +876,7 @@ internal fun MainAppContent(
         }
 
         fun openExternalStreamUrl(url: String): Boolean {
-            val opened = runCatching {
-                uriHandler.openUri(url)
-            }.isSuccess
+            val opened = urlOpener.open(url)
             if (!opened) {
                 NuvioToastController.show(failedOpenBrowserText)
             }
