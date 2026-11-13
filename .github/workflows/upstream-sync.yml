@@ -1,0 +1,32 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: "23 6 * * *" # daily at 06:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge upstream/cmp-rewrite into stable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out stable
+        uses: actions/checkout@v6
+        with:
+          ref: stable
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync upstream
+        run: ./scripts/upstream-sync.sh
