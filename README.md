@@ -12,14 +12,14 @@
 
 </div>
 
-## Nuvio Fork (this repository)
+## Nuvio Custom (this repository)
 
-This fork publishes its own Android builds under the application ID `com.dhionatha.nuvio`, so they can be installed alongside the official Nuvio app.
+This repository publishes its own Android builds as **Nuvio Custom**, under the application ID `com.dhionatha.nuvio`, so they can be installed alongside the official Nuvio app. Inside the app the branding stays "Nuvio".
 
-- [Fork releases](https://github.com/Dhionatha/NuvioMobile/releases/latest) — per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`).
-- Release tags use a fork suffix, for example `0.6.12-fork.1-beta`. The base version comes from upstream; one release is published per upstream `MARKETING_VERSION`.
-- The in-app updater follows this repository's beta channel, so fork builds update themselves.
-- `store.json` and iOS builds are not published by this fork.
+- [Nuvio Custom releases](https://github.com/Dhionatha/NuvioMobile/releases/latest) — per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`).
+- Release tags use a custom suffix, for example `0.6.12-custom.1-beta`. The base version comes from upstream; one release is published per upstream `MARKETING_VERSION`.
+- The in-app updater follows this repository's beta channel, so these builds update themselves.
+- `store.json` and iOS builds are not published here.
 
 ## Get Nuvio Mobile
 
