@@ -37,7 +37,8 @@ jobs:
       - name: Detect release for the current upstream version
         id: version
         env:
-          TAG_SUFFIX: "-fork.1"
+          TAG_SUFFIX: "-custom.1"
+          LEGACY_TAG_SUFFIXES: "-fork.1"
         run: |
           version="$(
             sed -nE 's/^[[:space:]]*MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\1/p' \
@@ -50,9 +51,16 @@ jobs:
           fi
 
           git fetch --tags origin
-          existing_tags="$(git tag --list "${version}${TAG_SUFFIX}-*")"
+          existing_tags="$(
+            {
+              git tag --list "${version}${TAG_SUFFIX}-*"
+              for legacy_suffix in ${LEGACY_TAG_SUFFIXES}; do
+                git tag --list "${version}${legacy_suffix}-*"
+              done
+            } | sort -u
+          )"
           if [[ -n "${existing_tags}" ]]; then
-            echo "A fork release already exists for ${version}:" >&2
+            echo "A release already exists for ${version}:" >&2
             echo "${existing_tags}" >&2
             needs_release=false
           else
@@ -63,7 +71,7 @@ jobs:
           echo "needs_release=${needs_release}" >> "${GITHUB_OUTPUT}"
 
   release:
-    name: Release ${{ needs.sync.outputs.release_version }} for the fork
+    name: Release ${{ needs.sync.outputs.release_version }} for Nuvio Custom
     needs: sync
     if: needs.sync.outputs.needs_release == 'true'
     permissions:
@@ -71,7 +79,7 @@ jobs:
     uses: ./.github/workflows/android-release.yml
     with:
       mode: publish
-      tag_suffix: "-fork.1"
+      tag_suffix: "-custom.1"
       enforce_bump_final: false
       build_ios: false
       update_store: false

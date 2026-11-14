@@ -13,10 +13,10 @@ on:
           - publish
         default: dry-run
       tag_suffix:
-        description: Optional suffix inserted before -beta (e.g. -fork.1)
+        description: Optional suffix inserted before -beta (e.g. -custom.1)
         required: false
         type: string
-        default: ""
+        default: "-custom.1"
       enforce_bump_final:
         description: Require the version bump to be the final application change
         required: false
@@ -45,10 +45,10 @@ on:
         type: string
         default: dry-run
       tag_suffix:
-        description: Optional suffix inserted before -beta (e.g. -fork.1)
+        description: Optional suffix inserted before -beta (e.g. -custom.1)
         required: false
         type: string
-        default: ""
+        default: "-custom.1"
       enforce_bump_final:
         description: Require the version bump to be the final application change
         required: false
@@ -171,7 +171,7 @@ jobs:
               exit 1
             fi
           else
-            echo "Skipping the final-bump check (fork release)."
+            echo "Skipping the final-bump check (custom release)."
           fi
 
           if [[ "${RELEASE_MODE}" != "dry-run" ]]; then
