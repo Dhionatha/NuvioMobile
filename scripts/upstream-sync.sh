@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# Maintain the fork's stable branch in sync with upstream/cmp-rewrite.
+# Maintain the fork's main branch in sync with upstream/cmp-rewrite.
 #
-# Run it from the stable branch:
-#   git switch stable
+# Run it from the main branch:
+#   git switch main
 #   ./scripts/upstream-sync.sh
 #
-# The script never merges feature branches. Features reach stable only through
+# The script never merges feature branches. Features reach main only through
 # an explicit `git merge --no-ff <branch>` (normally from the dev branch).
 
 set -euo pipefail
 
-STABLE_BRANCH="${STABLE_BRANCH:-stable}"
+MAIN_BRANCH="${MAIN_BRANCH:-main}"
 ORIGIN_REMOTE="${ORIGIN_REMOTE:-origin}"
 BASE_REMOTE="${BASE_REMOTE:-upstream}"
 BASE_BRANCH="${BASE_BRANCH:-cmp-rewrite}"
@@ -24,7 +24,7 @@ usage() {
     cat <<'EOF'
 Usage: scripts/upstream-sync.sh [options]
 
-Merges upstream/cmp-rewrite into the fork's stable branch.
+Merges upstream/cmp-rewrite into the fork's main branch.
 
 Options:
   --dry-run    Show what would be merged, without merging or pushing.
@@ -59,8 +59,8 @@ fail() {
 }
 
 current_branch="$(git rev-parse --abbrev-ref HEAD)"
-if [[ "$current_branch" != "$STABLE_BRANCH" ]]; then
-    fail "current branch is '$current_branch'; switch to '$STABLE_BRANCH' before syncing."
+if [[ "$current_branch" != "$MAIN_BRANCH" ]]; then
+    fail "current branch is '$current_branch'; switch to '$MAIN_BRANCH' before syncing."
 fi
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -108,12 +108,12 @@ merge_if_needed() {
     fi
 }
 
-remote_stable="$ORIGIN_REMOTE/$STABLE_BRANCH"
-if git rev-parse --verify --quiet "$remote_stable" >/dev/null; then
-    merge_if_needed "$remote_stable" "chore($STABLE_BRANCH): reconcile $remote_stable"
+remote_main="$ORIGIN_REMOTE/$MAIN_BRANCH"
+if git rev-parse --verify --quiet "$remote_main" >/dev/null; then
+    merge_if_needed "$remote_main" "chore($MAIN_BRANCH): reconcile $remote_main"
 fi
 
-merge_if_needed "$BASE_REF" "chore($STABLE_BRANCH): merge $BASE_REF"
+merge_if_needed "$BASE_REF" "chore($MAIN_BRANCH): merge $BASE_REF"
 
 if [[ "$dry_run" == true ]]; then
     echo "[dry-run] no merge or push performed."
@@ -127,13 +127,13 @@ if [[ "$do_push" == false ]]; then
     exit 0
 fi
 
-echo "Pushing $STABLE_BRANCH to $ORIGIN_REMOTE..."
-if ! git push "$ORIGIN_REMOTE" "HEAD:$STABLE_BRANCH"; then
-    echo "Push rejected; reconciling $remote_stable and retrying once..."
+echo "Pushing $MAIN_BRANCH to $ORIGIN_REMOTE..."
+if ! git push "$ORIGIN_REMOTE" "HEAD:$MAIN_BRANCH"; then
+    echo "Push rejected; reconciling $remote_main and retrying once..."
     git fetch "$ORIGIN_REMOTE"
-    merge_if_needed "$remote_stable" "chore($STABLE_BRANCH): reconcile $remote_stable after rejected push"
-    git push "$ORIGIN_REMOTE" "HEAD:$STABLE_BRANCH"
+    merge_if_needed "$remote_main" "chore($MAIN_BRANCH): reconcile $remote_main after rejected push"
+    git push "$ORIGIN_REMOTE" "HEAD:$MAIN_BRANCH"
 fi
 
-echo "Done: $STABLE_BRANCH is up to date with $BASE_REF."
-summary "Upstream sync: $STABLE_BRANCH updated with $BASE_REF."
+echo "Done: $MAIN_BRANCH is up to date with $BASE_REF."
+summary "Upstream sync: $MAIN_BRANCH updated with $BASE_REF."

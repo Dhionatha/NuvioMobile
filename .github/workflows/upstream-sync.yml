@@ -14,16 +14,16 @@ concurrency:
 
 jobs:
   sync:
-    name: Merge upstream/cmp-rewrite into stable
+    name: Merge upstream/cmp-rewrite into main
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.version.outputs.version }}
       needs_release: ${{ steps.version.outputs.needs_release }}
     steps:
-      - name: Check out stable
+      - name: Check out main
         uses: actions/checkout@v6
         with:
-          ref: stable
+          ref: main
           fetch-depth: 0
 
       - name: Configure git
