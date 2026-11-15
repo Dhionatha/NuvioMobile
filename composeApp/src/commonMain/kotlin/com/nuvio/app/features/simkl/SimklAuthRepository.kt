@@ -186,6 +186,14 @@ object SimklAuthRepository : TrackingAuthProvider {
         invalidateCredentials(SimklAuthError.AUTHORIZATION_REVOKED)
     }
 
+    /**
+     * AUTH V2 cannot widen a grant by refreshing, so a token minted without `media:write` has to
+     * be replaced by a new authorization round-trip.
+     */
+    internal fun onInsufficientScopeResponse() {
+        invalidateCredentials(SimklAuthError.INSUFFICIENT_SCOPE)
+    }
+
     suspend fun refreshUserSettings(): String? {
         authorizedAccessToken() ?: return null
         return if (fetchAndStoreUserSettings()) storedState.username else null
@@ -259,6 +267,16 @@ object SimklAuthRepository : TrackingAuthProvider {
                 clearPendingAuthorization()
                 persistMetadata()
                 publish(isLoading = false, error = SimklAuthError.INVALID_TOKEN_RESPONSE)
+                return@withLock
+            }
+            if (!simklGrantedScopeAllowsWrites(token.scope)) {
+                log.w {
+                    "Simkl granted a read-only token (scope=${token.scope}); " +
+                        "writes require $SIMKL_OAUTH2_SCOPE"
+                }
+                clearPendingAuthorization()
+                persistMetadata()
+                publish(isLoading = false, error = SimklAuthError.INSUFFICIENT_SCOPE)
                 return@withLock
             }
 

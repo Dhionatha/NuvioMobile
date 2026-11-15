@@ -97,6 +97,7 @@ import nuvio.composeapp.generated.resources.settings_simkl_default_user
 import nuvio.composeapp.generated.resources.settings_simkl_disconnect
 import nuvio.composeapp.generated.resources.settings_simkl_disconnect_description
 import nuvio.composeapp.generated.resources.settings_simkl_finish_sign_in
+import nuvio.composeapp.generated.resources.settings_simkl_insufficient_scope
 import nuvio.composeapp.generated.resources.settings_simkl_invalid_callback
 import nuvio.composeapp.generated.resources.settings_simkl_missing_credentials
 import nuvio.composeapp.generated.resources.settings_simkl_open_login
@@ -805,6 +806,8 @@ private fun simklErrorMessage(error: SimklAuthError?): String? = when (error) {
     SimklAuthError.TOKEN_EXCHANGE_FAILED,
     SimklAuthError.INVALID_TOKEN_RESPONSE,
     -> stringResource(Res.string.settings_simkl_sign_in_failed)
+    SimklAuthError.INSUFFICIENT_SCOPE ->
+        stringResource(Res.string.settings_simkl_insufficient_scope)
     SimklAuthError.AUTHORIZATION_REVOKED ->
         stringResource(Res.string.settings_simkl_authorization_revoked)
 }
