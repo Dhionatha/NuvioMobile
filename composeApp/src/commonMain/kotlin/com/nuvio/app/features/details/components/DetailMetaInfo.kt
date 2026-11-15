@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +47,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
 import com.nuvio.app.features.details.formatRuntimeForDisplay
 import com.nuvio.app.features.details.formatMetaReleaseLineForDetails
+import com.nuvio.app.features.details.imdbTitleUrl
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_AUDIENCE
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_IMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_LETTERBOXD
@@ -78,6 +81,7 @@ fun DetailMetaInfo(
     horizontalScrollPadding: Dp = 0.dp,
     showOverallRatings: Boolean = true,
     isMdbListActive: Boolean = false,
+    onOpenImdb: ((String) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -88,6 +92,7 @@ fun DetailMetaInfo(
         val releaseLine = formatMetaReleaseLineForDetails(meta)
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
+        val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenImdb = onOpenImdb)
         val validImdbRating = meta.imdbRating
             ?.takeIf { showOverallRatings && !isMdbListActive }
             ?.toDoubleOrNull()
@@ -132,6 +137,7 @@ fun DetailMetaInfo(
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.imdbRatingClickable(imdbRatingClick),
                     ) {
                         ImdbRatingSourceLabel(storeTextStyle = imdbTextStyle)
                         Spacer(modifier = Modifier.width(5.dp))
@@ -160,6 +166,7 @@ fun DetailMetaInfo(
             DetailRatingsRow(
                 ratings = meta.externalRatings,
                 horizontalScrollPadding = horizontalScrollPadding,
+                onImdbClick = imdbRatingClick,
             )
         }
 
@@ -192,9 +199,11 @@ internal fun DetailRatingsRow(
     ratings: List<MetaExternalRating>,
     modifier: Modifier = Modifier,
     horizontalScrollPadding: Dp = 0.dp,
+    onImdbClick: (() -> Unit)? = null,
 ) {
     RatingsRow(
         ratings = ratings,
+        onImdbClick = onImdbClick,
         modifier = modifier
             .nuvioHorizontalScrollBleed(horizontalScrollPadding)
             .fillMaxWidth()
@@ -208,6 +217,7 @@ internal fun RatingsRow(
     ratings: List<MetaExternalRating>,
     modifier: Modifier = Modifier,
     maxItems: Int = Int.MAX_VALUE,
+    onImdbClick: (() -> Unit)? = null,
 ) {
     val orderedRatings = remember(ratings, maxItems) {
         val bySource = ratings.associateBy { it.source }
@@ -228,8 +238,10 @@ internal fun RatingsRow(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
             )
+            val ratingClick = if (visuals.source == PROVIDER_IMDB) onImdbClick else null
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.imdbRatingClickable(ratingClick),
             ) {
                 if (visuals.source == PROVIDER_IMDB && !AppFeaturePolicy.imdbRatingLogoEnabled) {
                     ImdbRatingSourceLabel(storeTextStyle = ratingTextStyle)
@@ -254,6 +266,28 @@ internal fun RatingsRow(
         }
     }
 }
+
+@Composable
+internal fun rememberImdbRatingClick(
+    meta: MetaDetails,
+    onOpenImdb: ((String) -> Unit)?,
+): (() -> Unit)? {
+    val imdbUrl = remember(meta.id, meta.imdbId) { meta.imdbTitleUrl() }
+    return remember(imdbUrl, onOpenImdb) {
+        if (imdbUrl != null && onOpenImdb != null) {
+            { onOpenImdb(imdbUrl) }
+        } else {
+            null
+        }
+    }
+}
+
+internal fun Modifier.imdbRatingClickable(onClick: (() -> Unit)?): Modifier =
+    if (onClick == null) {
+        this
+    } else {
+        clip(RoundedCornerShape(4.dp)).clickable(onClick = onClick)
+    }
 
 @Composable
 internal fun ImdbRatingSourceLabel(storeTextStyle: TextStyle) {
