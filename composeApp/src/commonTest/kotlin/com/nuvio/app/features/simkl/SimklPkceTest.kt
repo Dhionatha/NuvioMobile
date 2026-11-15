@@ -61,6 +61,37 @@ class SimklPkceTest {
     }
 
     @Test
+    fun `authorization URL requests write scope only for oauth2`() {
+        val url = buildSimklAuthorizationUrl(
+            clientId = "client",
+            redirectUri = "nuvio://auth/simkl",
+            appName = "nuvio",
+            appVersion = "1.2.3",
+            material = SimklPkceMaterial("verifier", "challenge", "state"),
+        )
+
+        if (SimklConfig.USE_OAUTH2) {
+            assertTrue("scope=media%3Aread%20media%3Awrite" in url)
+        } else {
+            assertFalse("scope=" in url)
+        }
+    }
+
+    @Test
+    fun `granted scope must include media write on oauth2`() {
+        if (SimklConfig.USE_OAUTH2) {
+            assertTrue(simklGrantedScopeAllowsWrites("media:read media:write"))
+            assertTrue(simklGrantedScopeAllowsWrites("media:write"))
+            assertFalse(simklGrantedScopeAllowsWrites("media:read"))
+            assertFalse(simklGrantedScopeAllowsWrites("media:wrote"))
+            assertFalse(simklGrantedScopeAllowsWrites(""))
+            assertFalse(simklGrantedScopeAllowsWrites(null))
+        } else {
+            assertTrue(simklGrantedScopeAllowsWrites(null))
+        }
+    }
+
+    @Test
     fun `callback parser rejects other routes and missing state`() {
         assertIs<SimklAuthCallback.NotSimkl>(
             parseSimklAuthCallback("nuvio://auth/trakt?code=a&state=b", "nuvio://auth/simkl"),

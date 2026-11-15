@@ -15,6 +15,7 @@ import kotlin.math.max
 import kotlin.random.Random
 
 private const val SIMKL_MAX_RESPONSE_BODY_BYTES = 8 * 1024 * 1024
+private const val SIMKL_INSUFFICIENT_SCOPE_ERROR = "insufficient_scope"
 private val simklSyncLog = Logger.withTag("SimklSync")
 
 internal enum class SimklHttpMethod {
@@ -66,6 +67,7 @@ internal class SimklApiClient(
     private val engine: SimklHttpEngine,
     private val accessToken: () -> String?,
     private val onUnauthorized: () -> Unit,
+    private val onInsufficientScope: () -> Unit = onUnauthorized,
     private val nowEpochMs: () -> Long = SimklPlatformClock::nowEpochMs,
     private val sleep: suspend (Long) -> Unit = { delayMs -> delay(delayMs) },
     private val retryJitterMs: () -> Long = { Random.nextLong(RETRY_JITTER_BOUND_MS + 1L) },
@@ -138,6 +140,16 @@ internal class SimklApiClient(
                 syncWriteLockRetried = true
                 sleep(SYNC_WRITE_LOCK_RETRY_DELAY_MS)
                 continue
+            }
+
+            // AUTH V2 mints read-only tokens when the grant lacks `media:write`. Refreshing cannot
+            // widen the grant, so the only recovery is a new authorization round-trip.
+            if (
+                response.status == 403 &&
+                response.errorCode(json) == SIMKL_INSUFFICIENT_SCOPE_ERROR
+            ) {
+                if (request.requiresAuthentication) onInsufficientScope()
+                throw response.toApiException(json)
             }
 
             when (classifySimklResponse(response.status, request.scrobbleStopConflictIsSuccess)) {
@@ -244,6 +256,7 @@ internal object SimklApi {
             },
             accessToken = SimklAuthRepository::authorizedAccessToken,
             onUnauthorized = SimklAuthRepository::onUnauthorizedResponse,
+            onInsufficientScope = SimklAuthRepository::onInsufficientScopeResponse,
         )
     }
 }

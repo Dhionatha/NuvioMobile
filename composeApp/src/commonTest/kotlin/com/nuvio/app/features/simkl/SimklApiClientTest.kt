@@ -310,6 +310,54 @@ class SimklApiClientTest {
         assertFalse(harness.wasUnauthorized)
     }
 
+    @Test
+    fun `insufficient scope response ends the session instead of retrying`() = runBlocking {
+        val engine = RecordingEngine(
+            response(
+                status = 403,
+                body = """{"error":"insufficient_scope","code":403,"message":"This action requires the \"media:read media:write\" scope"}""",
+            ),
+        )
+        val harness = TestHarness(engine)
+
+        val error = assertFailsWith<SimklApiException> {
+            harness.client.execute(
+                SimklApiRequest(
+                    method = SimklHttpMethod.POST,
+                    path = "/sync/add-to-list",
+                    body = """{"videos":[]}""",
+                    retryPolicy = SimklRetryPolicy.SYNC_WRITE,
+                ),
+            )
+        }
+
+        assertEquals("insufficient_scope", error.errorCode)
+        assertTrue(harness.wasScopeDenied)
+        assertFalse(harness.wasUnauthorized)
+        assertEquals(1, engine.requests.size)
+    }
+
+    @Test
+    fun `unauthenticated scope rejection does not invalidate an existing session`() = runBlocking {
+        val engine = RecordingEngine(response(403, """{"error":"insufficient_scope","code":403}"""))
+        val harness = TestHarness(engine)
+
+        assertFailsWith<SimklApiException> {
+            harness.client.execute(
+                SimklApiRequest(
+                    method = SimklHttpMethod.POST,
+                    path = "/oauth2/token",
+                    body = "{}",
+                    requiresAuthentication = false,
+                    retryPolicy = SimklRetryPolicy.NEVER,
+                ),
+            )
+        }
+
+        assertFalse(harness.wasScopeDenied)
+        assertFalse(harness.wasUnauthorized)
+    }
+
     private class TestHarness(
         engine: RecordingEngine,
         responseDurationMs: Long = 0L,
@@ -317,6 +365,7 @@ class SimklApiClientTest {
         var now = 0L
         val sleeps = mutableListOf<Long>()
         var wasUnauthorized = false
+        var wasScopeDenied = false
         val client = SimklApiClient(
             engine = engine.also { recording ->
                 recording.now = { now }
@@ -324,6 +373,7 @@ class SimklApiClientTest {
             },
             accessToken = { "token" },
             onUnauthorized = { wasUnauthorized = true },
+            onInsufficientScope = { wasScopeDenied = true },
             nowEpochMs = { now },
             sleep = { delayMs ->
                 sleeps += delayMs
