@@ -281,9 +281,11 @@ fun TabletDetailHero(
     onHeroTrailerMuteToggle: () -> Unit,
     onHeightChanged: (Int) -> Unit,
     actions: (@Composable () -> Unit)?,
+    onOpenImdb: ((String) -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val space = NuvioTokens.Space
+    val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenImdb = onOpenImdb)
     val trailerAlpha by animateFloatAsState(
         targetValue = if (heroTrailerReady) 1f else 0f,
         animationSpec = tween(durationMillis = NuvioTokens.Motion.sheetEnterMillis),
@@ -337,7 +339,11 @@ fun TabletDetailHero(
             }
             if (showOverview) {
                 Spacer(modifier = Modifier.height(space.s20))
-                TabletHeroMetaRow(meta = meta, showImdbRating = showOverallRatings && !isMdbListActive)
+                TabletHeroMetaRow(
+                    meta = meta,
+                    showImdbRating = showOverallRatings && !isMdbListActive,
+                    onImdbClick = imdbRatingClick,
+                )
                 AnimatedVisibility(
                     visible = isMdbListActive && meta.externalRatings.isNotEmpty(),
                     enter = fadeIn() + expandVertically(),
@@ -348,6 +354,7 @@ fun TabletDetailHero(
                         DetailRatingsRow(
                             ratings = meta.externalRatings,
                             modifier = Modifier.widthIn(max = 520.dp),
+                            onImdbClick = imdbRatingClick,
                         )
                     }
                 }
@@ -425,7 +432,11 @@ fun TabletDetailHero(
 }
 
 @Composable
-private fun TabletHeroMetaRow(meta: MetaDetails, showImdbRating: Boolean) {
+private fun TabletHeroMetaRow(
+    meta: MetaDetails,
+    showImdbRating: Boolean,
+    onImdbClick: (() -> Unit)?,
+) {
     val colorScheme = MaterialTheme.colorScheme
     val seasonCount = remember(meta.videos) {
         meta.videos.mapNotNull { it.season }.filter { it > 0 }.toSet().size
@@ -464,7 +475,10 @@ private fun TabletHeroMetaRow(meta: MetaDetails, showImdbRating: Boolean) {
             DetailHeroMetaBadge(text = rating)
         }
         if (validImdbRating != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.imdbRatingClickable(onImdbClick),
+            ) {
                 ImdbRatingSourceLabel(storeTextStyle = itemStyle)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
