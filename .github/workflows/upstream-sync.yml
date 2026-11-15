@@ -53,6 +53,7 @@ jobs:
           git fetch --tags origin
           existing_tags="$(
             {
+              git tag --list "${version}${TAG_SUFFIX}"
               git tag --list "${version}${TAG_SUFFIX}-*"
               for legacy_suffix in ${LEGACY_TAG_SUFFIXES}; do
                 git tag --list "${version}${legacy_suffix}-*"

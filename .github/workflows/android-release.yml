@@ -87,6 +87,8 @@ jobs:
       release_commit: ${{ steps.release.outputs.release_commit }}
       notes_from: ${{ steps.notes.outputs.from }}
       notes_to: ${{ steps.notes.outputs.to }}
+      title: ${{ steps.release.outputs.title }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
@@ -118,10 +120,10 @@ jobs:
           if [[ -n "${TAG_SUFFIX}" ]]; then
             to_ref="$(git rev-parse HEAD)"
             previous_tag="$(
-              git tag --list "*${TAG_SUFFIX}-beta" --sort=-v:refname \
-                | grep -vx "${RELEASE_TAG}" \
-                | head -n 1 \
-                || true
+              {
+                git tag --list "*${TAG_SUFFIX}"
+                git tag --list "*${TAG_SUFFIX}-*"
+              } | grep -vx "${RELEASE_TAG}" | sort -rV | head -n 1 || true
             )"
             if [[ -n "${previous_tag}" ]]; then
               from_ref="${previous_tag}"
@@ -144,8 +146,8 @@ jobs:
             echo "Releases must be dispatched from a branch, not ${RELEASE_REF_TYPE}." >&2
             exit 1
           fi
-          if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
-            echo "Releases must be dispatched from the default branch (${DEFAULT_BRANCH})." >&2
+          if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" && "${RELEASE_BRANCH}" != "main" ]]; then
+            echo "Releases must be dispatched from main or the default branch (${DEFAULT_BRANCH})." >&2
             exit 1
           fi
 
@@ -196,7 +198,10 @@ jobs:
           NOTES_FROM: ${{ steps.notes.outputs.from }}
           NOTES_TO: ${{ steps.notes.outputs.to }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.title }}
+          RELEASE_PRERELEASE: ${{ steps.release.outputs.prerelease }}
           EXCLUDE_COMMITS: ${{ inputs.exclude_commits }}
+          RELEASE_MODE: ${{ inputs.mode }}
         run: |
           ./scripts/generate-release-notes.sh \
             --from "${NOTES_FROM}" \
@@ -206,12 +211,26 @@ jobs:
             > release-notes.md
 
           if [[ ! -s release-notes.md ]]; then
-            echo "No release-note commits were found." >&2
-            exit 1
+            if [[ "${RELEASE_MODE}" == "publish" ]]; then
+              echo "No release-note commits were found." >&2
+              exit 1
+            fi
+            printf '%s\n' 'Release notes pending. Replace this text before publishing.' > release-notes.md
+          fi
+
+          if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
+            {
+              printf '%s\n' \
+                '> [!IMPORTANT]' \
+                '> **Beta builds are for testing purposes and may contain bugs, regressions, or unexpected issues.** If you prefer a reliable experience, we recommend staying on the **Stable** channel.' \
+                ''
+              cat release-notes.md
+            } > release-notes.tmp
+            mv release-notes.tmp release-notes.md
           fi
 
           {
-            echo "## ${RELEASE_TAG} release notes"
+            echo "## ${RELEASE_TITLE} release notes"
             echo
             cat release-notes.md
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -377,6 +396,8 @@ jobs:
       RELEASE_MODE: ${{ inputs.mode }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       RELEASE_COMMIT: ${{ needs.prepare.outputs.release_commit }}
+      RELEASE_TITLE: ${{ needs.prepare.outputs.title }}
+      RELEASE_PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
 
     steps:
       - name: Download release artifacts
@@ -397,9 +418,14 @@ jobs:
             "${RELEASE_TAG}"
             --repo "${GITHUB_REPOSITORY}"
             --target "${RELEASE_COMMIT}"
-            --title "${RELEASE_TAG}"
+            --title "${RELEASE_TITLE}"
             --notes-file release-assets/release-notes.md
           )
+          if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
+            release_args+=(--prerelease)
+          elif [[ "${RELEASE_MODE}" == "publish" ]]; then
+            release_args+=(--latest)
+          fi
           if [[ "${RELEASE_MODE}" == "draft" ]]; then
             release_args+=(--draft)
           fi
@@ -407,7 +433,7 @@ jobs:
 
   store:
     name: Update sideload source
-    if: inputs.mode == 'publish' && inputs.update_store
+    if: inputs.mode == 'publish' && inputs.update_store && needs.prepare.outputs.prerelease != 'true'
     needs:
       - prepare
       - release
