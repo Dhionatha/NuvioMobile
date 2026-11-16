@@ -52,6 +52,8 @@ data class MetaExternalRating(
     val source: String,
     val value: Double,
     val isCertified: Boolean = false,
+    /** Provider page for this rating, when the metadata source exposes one. */
+    val url: String? = null,
 )
 
 data class MetaTrailer(
