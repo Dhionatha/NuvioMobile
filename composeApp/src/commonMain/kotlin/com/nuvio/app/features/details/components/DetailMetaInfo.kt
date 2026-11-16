@@ -81,7 +81,7 @@ fun DetailMetaInfo(
     horizontalScrollPadding: Dp = 0.dp,
     showOverallRatings: Boolean = true,
     isMdbListActive: Boolean = false,
-    onOpenImdb: ((String) -> Unit)? = null,
+    onOpenExternalUrl: ((String) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -92,7 +92,8 @@ fun DetailMetaInfo(
         val releaseLine = formatMetaReleaseLineForDetails(meta)
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
-        val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenImdb = onOpenImdb)
+        val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenExternalUrl = onOpenExternalUrl)
+        val linkedRatings = rememberLinkedExternalRatings(meta)
         val validImdbRating = meta.imdbRating
             ?.takeIf { showOverallRatings && !isMdbListActive }
             ?.toDoubleOrNull()
@@ -137,7 +138,7 @@ fun DetailMetaInfo(
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.imdbRatingClickable(imdbRatingClick),
+                        modifier = Modifier.ratingPageClickable(imdbRatingClick),
                     ) {
                         ImdbRatingSourceLabel(storeTextStyle = imdbTextStyle)
                         Spacer(modifier = Modifier.width(5.dp))
@@ -164,9 +165,9 @@ fun DetailMetaInfo(
             exit = fadeOut() + shrinkVertically(),
         ) {
             DetailRatingsRow(
-                ratings = meta.externalRatings,
+                ratings = linkedRatings,
                 horizontalScrollPadding = horizontalScrollPadding,
-                onImdbClick = imdbRatingClick,
+                onRatingUrlClick = onOpenExternalUrl,
             )
         }
 
@@ -199,11 +200,11 @@ internal fun DetailRatingsRow(
     ratings: List<MetaExternalRating>,
     modifier: Modifier = Modifier,
     horizontalScrollPadding: Dp = 0.dp,
-    onImdbClick: (() -> Unit)? = null,
+    onRatingUrlClick: ((String) -> Unit)? = null,
 ) {
     RatingsRow(
         ratings = ratings,
-        onImdbClick = onImdbClick,
+        onRatingUrlClick = onRatingUrlClick,
         modifier = modifier
             .nuvioHorizontalScrollBleed(horizontalScrollPadding)
             .fillMaxWidth()
@@ -217,7 +218,7 @@ internal fun RatingsRow(
     ratings: List<MetaExternalRating>,
     modifier: Modifier = Modifier,
     maxItems: Int = Int.MAX_VALUE,
-    onImdbClick: (() -> Unit)? = null,
+    onRatingUrlClick: ((String) -> Unit)? = null,
 ) {
     val orderedRatings = remember(ratings, maxItems) {
         val bySource = ratings.associateBy { it.source }
@@ -238,10 +239,12 @@ internal fun RatingsRow(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
             )
-            val ratingClick = if (visuals.source == PROVIDER_IMDB) onImdbClick else null
+            val ratingClick = rating.url?.let { url ->
+                onRatingUrlClick?.let { click -> { click(url) } }
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.imdbRatingClickable(ratingClick),
+                modifier = Modifier.ratingPageClickable(ratingClick),
             ) {
                 if (visuals.source == PROVIDER_IMDB && !AppFeaturePolicy.imdbRatingLogoEnabled) {
                     ImdbRatingSourceLabel(storeTextStyle = ratingTextStyle)
@@ -270,19 +273,41 @@ internal fun RatingsRow(
 @Composable
 internal fun rememberImdbRatingClick(
     meta: MetaDetails,
-    onOpenImdb: ((String) -> Unit)?,
+    onOpenExternalUrl: ((String) -> Unit)?,
 ): (() -> Unit)? {
     val imdbUrl = remember(meta.id, meta.imdbId) { meta.imdbTitleUrl() }
-    return remember(imdbUrl, onOpenImdb) {
-        if (imdbUrl != null && onOpenImdb != null) {
-            { onOpenImdb(imdbUrl) }
+    return remember(imdbUrl, onOpenExternalUrl) {
+        if (imdbUrl != null && onOpenExternalUrl != null) {
+            { onOpenExternalUrl(imdbUrl) }
         } else {
             null
         }
     }
 }
 
-internal fun Modifier.imdbRatingClickable(onClick: (() -> Unit)?): Modifier =
+/**
+ * Ratings as fetched from MDBList, with the IMDb page url filled in when the payload did not carry
+ * one. Keeps the IMDb chip clickable for older cached responses that predate the provider urls.
+ */
+@Composable
+internal fun rememberLinkedExternalRatings(meta: MetaDetails): List<MetaExternalRating> {
+    val imdbUrl = remember(meta.id, meta.imdbId) { meta.imdbTitleUrl() }
+    return remember(meta.externalRatings, imdbUrl) {
+        if (imdbUrl == null) {
+            meta.externalRatings
+        } else {
+            meta.externalRatings.map { rating ->
+                if (rating.source == PROVIDER_IMDB && rating.url.isNullOrBlank()) {
+                    rating.copy(url = imdbUrl)
+                } else {
+                    rating
+                }
+            }
+        }
+    }
+}
+
+internal fun Modifier.ratingPageClickable(onClick: (() -> Unit)?): Modifier =
     if (onClick == null) {
         this
     } else {

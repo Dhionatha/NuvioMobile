@@ -732,7 +732,7 @@ fun MetaDetailsScreen(
                 val uriHandler = LocalUriHandler.current
                 val urlOpener = rememberExternalUrlOpener()
                 val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
-                val openImdbUrl: (String) -> Unit = remember(urlOpener, failedOpenBrowserText) {
+                val openExternalUrl: (String) -> Unit = remember(urlOpener, failedOpenBrowserText) {
                     { url ->
                         if (!urlOpener.open(url)) {
                             NuvioToastController.show(failedOpenBrowserText)
@@ -1191,7 +1191,7 @@ fun MetaDetailsScreen(
                                                 heroTrailerMuted = heroTrailerMuted,
                                                 onHeroTrailerMuteToggle = HeroTrailerAudioState::toggleMuted,
                                                 onHeightChanged = { heroHeightPx.intValue = it },
-                                                onOpenImdb = openImdbUrl,
+                                                onOpenExternalUrl = openExternalUrl,
                                                 actions = if (isSectionEnabled(MetaScreenSectionKey.ACTIONS)) {
                                                     {
                                                         DetailActions(
@@ -1327,7 +1327,7 @@ fun MetaDetailsScreen(
                                         onOpenMeta = onOpenMeta,
                                         onCastClick = onCastClick,
                                         onCompanyClick = onCompanyClick,
-                                        onOpenImdb = openImdbUrl,
+                                        onOpenExternalUrl = openExternalUrl,
                                         sharedTransitionScope = sharedTransitionScope,
                                         animatedVisibilityScope = animatedVisibilityScope,
                                     )
@@ -2036,7 +2036,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     onOpenMeta: ((MetaPreview) -> Unit)?,
     onCastClick: ((MetaPerson, String?) -> Unit)?,
     onCompanyClick: ((MetaCompany, String) -> Unit)?,
-    onOpenImdb: ((String) -> Unit)?,
+    onOpenExternalUrl: ((String) -> Unit)?,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ) {
@@ -2118,7 +2118,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     onOpenMeta = onOpenMeta,
                     onCastClick = onCastClick,
                     onCompanyClick = onCompanyClick,
-                    onOpenImdb = onOpenImdb,
+                    onOpenExternalUrl = onOpenExternalUrl,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
@@ -2348,7 +2348,7 @@ private fun ConfiguredMetaSections(
     onOpenMeta: ((MetaPreview) -> Unit)?,
     onCastClick: ((MetaPerson, String?) -> Unit)?,
     onCompanyClick: ((MetaCompany, String) -> Unit)?,
-    onOpenImdb: ((String) -> Unit)?,
+    onOpenExternalUrl: ((String) -> Unit)?,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ) {
@@ -2395,7 +2395,7 @@ private fun ConfiguredMetaSections(
                     showOverallRatings = settings.showOverallRatings,
                     isMdbListActive = isMdbListActive,
                     horizontalScrollPadding = horizontalScrollPadding,
-                    onOpenImdb = onOpenImdb,
+                    onOpenExternalUrl = onOpenExternalUrl,
                 )
             }
             MetaScreenSectionKey.PRODUCTION -> {

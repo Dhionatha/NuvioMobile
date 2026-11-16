@@ -281,11 +281,12 @@ fun TabletDetailHero(
     onHeroTrailerMuteToggle: () -> Unit,
     onHeightChanged: (Int) -> Unit,
     actions: (@Composable () -> Unit)?,
-    onOpenImdb: ((String) -> Unit)? = null,
+    onOpenExternalUrl: ((String) -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val space = NuvioTokens.Space
-    val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenImdb = onOpenImdb)
+    val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenExternalUrl = onOpenExternalUrl)
+    val linkedRatings = rememberLinkedExternalRatings(meta)
     val trailerAlpha by animateFloatAsState(
         targetValue = if (heroTrailerReady) 1f else 0f,
         animationSpec = tween(durationMillis = NuvioTokens.Motion.sheetEnterMillis),
@@ -352,9 +353,9 @@ fun TabletDetailHero(
                     Column {
                         Spacer(modifier = Modifier.height(space.s12))
                         DetailRatingsRow(
-                            ratings = meta.externalRatings,
+                            ratings = linkedRatings,
                             modifier = Modifier.widthIn(max = 520.dp),
-                            onImdbClick = imdbRatingClick,
+                            onRatingUrlClick = onOpenExternalUrl,
                         )
                     }
                 }
@@ -477,7 +478,7 @@ private fun TabletHeroMetaRow(
         if (validImdbRating != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.imdbRatingClickable(onImdbClick),
+                modifier = Modifier.ratingPageClickable(onImdbClick),
             ) {
                 ImdbRatingSourceLabel(storeTextStyle = itemStyle)
                 Spacer(modifier = Modifier.width(4.dp))
