@@ -98,6 +98,7 @@ import com.nuvio.app.core.ui.ScreenActivityEffect
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.core.ui.rememberArtworkBackdrop
+import com.nuvio.app.core.ui.rememberExternalUrlOpener
 import com.nuvio.app.core.ui.rememberHeroStretchState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -729,6 +730,15 @@ fun MetaDetailsScreen(
                     meta.trailers.isNotEmpty()
                 }
                 val uriHandler = LocalUriHandler.current
+                val urlOpener = rememberExternalUrlOpener()
+                val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
+                val openExternalUrl: (String) -> Unit = remember(urlOpener, failedOpenBrowserText) {
+                    { url ->
+                        if (!urlOpener.open(url)) {
+                            NuvioToastController.show(failedOpenBrowserText)
+                        }
+                    }
+                }
                 val inAppTrailerPlaybackEnabled = AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
                 val trailerScope = rememberCoroutineScope()
                 var selectedTrailer by remember(meta.id) { mutableStateOf<MetaTrailer?>(null) }
@@ -1181,6 +1191,7 @@ fun MetaDetailsScreen(
                                                 heroTrailerMuted = heroTrailerMuted,
                                                 onHeroTrailerMuteToggle = HeroTrailerAudioState::toggleMuted,
                                                 onHeightChanged = { heroHeightPx.intValue = it },
+                                                onOpenExternalUrl = openExternalUrl,
                                                 actions = if (isSectionEnabled(MetaScreenSectionKey.ACTIONS)) {
                                                     {
                                                         DetailActions(
@@ -1316,6 +1327,7 @@ fun MetaDetailsScreen(
                                         onOpenMeta = onOpenMeta,
                                         onCastClick = onCastClick,
                                         onCompanyClick = onCompanyClick,
+                                        onOpenExternalUrl = openExternalUrl,
                                         sharedTransitionScope = sharedTransitionScope,
                                         animatedVisibilityScope = animatedVisibilityScope,
                                     )
@@ -2024,6 +2036,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     onOpenMeta: ((MetaPreview) -> Unit)?,
     onCastClick: ((MetaPerson, String?) -> Unit)?,
     onCompanyClick: ((MetaCompany, String) -> Unit)?,
+    onOpenExternalUrl: ((String) -> Unit)?,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ) {
@@ -2105,6 +2118,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     onOpenMeta = onOpenMeta,
                     onCastClick = onCastClick,
                     onCompanyClick = onCompanyClick,
+                    onOpenExternalUrl = onOpenExternalUrl,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
@@ -2334,6 +2348,7 @@ private fun ConfiguredMetaSections(
     onOpenMeta: ((MetaPreview) -> Unit)?,
     onCastClick: ((MetaPerson, String?) -> Unit)?,
     onCompanyClick: ((MetaCompany, String) -> Unit)?,
+    onOpenExternalUrl: ((String) -> Unit)?,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ) {
@@ -2380,6 +2395,7 @@ private fun ConfiguredMetaSections(
                     showOverallRatings = settings.showOverallRatings,
                     isMdbListActive = isMdbListActive,
                     horizontalScrollPadding = horizontalScrollPadding,
+                    onOpenExternalUrl = onOpenExternalUrl,
                 )
             }
             MetaScreenSectionKey.PRODUCTION -> {
