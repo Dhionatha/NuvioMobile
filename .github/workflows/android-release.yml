@@ -12,10 +12,73 @@ on:
           - draft
           - publish
         default: dry-run
+      tag_suffix:
+        description: Optional suffix inserted before -beta (e.g. -custom.1)
+        required: false
+        type: string
+        default: "-custom.1"
+      enforce_bump_final:
+        description: Require the version bump to be the final application change
+        required: false
+        type: boolean
+        default: true
+      build_ios:
+        description: Build and attach the unsigned iOS IPA
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: Publish as a prerelease (never marked as latest)
+        required: false
+        type: boolean
+        default: false
+      update_store:
+        description: Update store.json after publishing (iOS only)
+        required: false
+        type: boolean
+        default: false
       exclude_commits:
         description: Optional comma-separated commit hashes to omit from the notes
         required: false
         type: string
+        default: ""
+  workflow_call:
+    inputs:
+      mode:
+        description: Validate only, create a draft, or publish the release
+        required: false
+        type: string
+        default: dry-run
+      tag_suffix:
+        description: Optional suffix inserted before -beta (e.g. -custom.1)
+        required: false
+        type: string
+        default: "-custom.1"
+      enforce_bump_final:
+        description: Require the version bump to be the final application change
+        required: false
+        type: boolean
+        default: true
+      build_ios:
+        description: Build and attach the unsigned iOS IPA
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: Publish as a prerelease (never marked as latest)
+        required: false
+        type: boolean
+        default: false
+      update_store:
+        description: Update store.json after publishing
+        required: false
+        type: boolean
+        default: false
+      exclude_commits:
+        description: Optional comma-separated commit hashes to omit from the notes
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -31,8 +94,11 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
+      release_commit: ${{ steps.release.outputs.release_commit }}
+      notes_from: ${{ steps.notes.outputs.from }}
+      notes_to: ${{ steps.notes.outputs.to }}
       title: ${{ steps.release.outputs.title }}
-      prerelease: ${{ steps.release.outputs.prerelease }}
+      prerelease: ${{ steps.prerelease.outputs.prerelease }}
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
@@ -42,11 +108,51 @@ jobs:
       - name: Check out full history
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Read release metadata
         id: release
-        run: ./scripts/release-metadata.sh "${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+        env:
+          TAG_SUFFIX: ${{ inputs.tag_suffix }}
+        run: ./scripts/release-metadata.sh HEAD >> "${GITHUB_OUTPUT}"
+
+      - name: Apply prerelease override
+        id: prerelease
+        env:
+          METADATA_PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          FORCE_PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          prerelease="${METADATA_PRERELEASE}"
+          if [[ "${FORCE_PRERELEASE}" == "true" || "${RELEASE_BRANCH}" == "dev" ]]; then
+            prerelease=true
+          fi
+          printf 'prerelease=%s\n' "${prerelease}" >> "${GITHUB_OUTPUT}"
+
+      - name: Resolve release notes range
+        id: notes
+        env:
+          TAG_SUFFIX: ${{ inputs.tag_suffix }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          PREVIOUS_BUMP: ${{ steps.release.outputs.previous_bump }}
+          CURRENT_BUMP: ${{ steps.release.outputs.current_bump }}
+        run: |
+          from_ref="${PREVIOUS_BUMP}"
+          to_ref="${CURRENT_BUMP}"
+          if [[ -n "${TAG_SUFFIX}" ]]; then
+            to_ref="$(git rev-parse HEAD)"
+            previous_tag="$(
+              {
+                git tag --list "*${TAG_SUFFIX}"
+                git tag --list "*${TAG_SUFFIX}-*"
+              } | grep -vx "${RELEASE_TAG}" | sort -rV | head -n 1 || true
+            )"
+            if [[ -n "${previous_tag}" ]]; then
+              from_ref="${previous_tag}"
+            fi
+          fi
+          printf 'from=%s\nto=%s\n' "${from_ref}" "${to_ref}" >> "${GITHUB_OUTPUT}"
 
       - name: Validate release state
         env:
@@ -57,13 +163,19 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_REF_TYPE: ${{ github.ref_type }}
           RELEASE_MODE: ${{ inputs.mode }}
+          TAG_SUFFIX: ${{ inputs.tag_suffix }}
+          ENFORCE_BUMP_FINAL: ${{ inputs.enforce_bump_final }}
         run: |
           if [[ "${RELEASE_REF_TYPE}" != "branch" ]]; then
             echo "Releases must be dispatched from a branch, not ${RELEASE_REF_TYPE}." >&2
             exit 1
           fi
-          if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" && "${RELEASE_BRANCH}" != "main" ]]; then
-            echo "Releases must be dispatched from main or the default branch (${DEFAULT_BRANCH})." >&2
+          if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" && "${RELEASE_BRANCH}" != "main" && "${RELEASE_BRANCH}" != "dev" ]]; then
+            echo "Releases must be dispatched from main, dev, or the default branch (${DEFAULT_BRANCH})." >&2
+            exit 1
+          fi
+          if [[ "${RELEASE_BRANCH}" == "dev" && "${TAG_SUFFIX}" != "-dev.1" ]]; then
+            echo "Releases from dev must use the -dev.1 tag suffix." >&2
             exit 1
           fi
 
@@ -76,16 +188,20 @@ jobs:
             exit 1
           fi
 
-          unexpected_changes="$(
-            git diff --name-only "${CURRENT_BUMP}..${RELEASE_COMMIT}" \
-              | grep -Ev '^(\.github/workflows/(android-release|update-store-source)\.yml|store\.json|scripts/(build-ios-ipa|generate-release-notes|prepare-ios-dependencies|release-metadata)\.sh|scripts/update-store-source\.py)$' \
-              || true
-          )"
-          if [[ -n "${unexpected_changes}" ]]; then
-            echo "The version bump must be the final application change before release." >&2
-            echo "Unexpected files changed after the bump:" >&2
-            echo "${unexpected_changes}" >&2
-            exit 1
+          if [[ "${ENFORCE_BUMP_FINAL}" == "true" ]]; then
+            unexpected_changes="$(
+              git diff --name-only "${CURRENT_BUMP}..${RELEASE_COMMIT}" \
+                | grep -Ev '^(\.github/workflows/(android-release|dev-release|update-store-source|upstream-sync)\.yml|store\.json|scripts/(build-ios-ipa|generate-release-notes|prepare-ios-dependencies|release-metadata)\.sh|scripts/update-store-source\.py)$' \
+                || true
+            )"
+            if [[ -n "${unexpected_changes}" ]]; then
+              echo "The version bump must be the final application change before release." >&2
+              echo "Unexpected files changed after the bump:" >&2
+              echo "${unexpected_changes}" >&2
+              exit 1
+            fi
+          else
+            echo "Skipping the final-bump check (custom release)."
           fi
 
           if [[ "${RELEASE_MODE}" != "dry-run" ]]; then
@@ -107,15 +223,17 @@ jobs:
 
       - name: Generate release notes
         env:
-          RELEASE_PRERELEASE: ${{ steps.release.outputs.prerelease }}
-          PREVIOUS_BUMP: ${{ steps.release.outputs.previous_bump }}
-          CURRENT_BUMP: ${{ steps.release.outputs.current_bump }}
+          NOTES_FROM: ${{ steps.notes.outputs.from }}
+          NOTES_TO: ${{ steps.notes.outputs.to }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.title }}
+          RELEASE_PRERELEASE: ${{ steps.prerelease.outputs.prerelease }}
           EXCLUDE_COMMITS: ${{ inputs.exclude_commits }}
           RELEASE_MODE: ${{ inputs.mode }}
         run: |
           ./scripts/generate-release-notes.sh \
-            --from "${PREVIOUS_BUMP}" \
-            --to "${CURRENT_BUMP}" \
+            --from "${NOTES_FROM}" \
+            --to "${NOTES_TO}" \
             --repository "${GITHUB_REPOSITORY}" \
             --exclude "${EXCLUDE_COMMITS}" \
             > release-notes.md
@@ -140,7 +258,7 @@ jobs:
           fi
 
           {
-            echo "## ${{ steps.release.outputs.title }} release notes"
+            echo "## ${RELEASE_TITLE} release notes"
             echo
             cat release-notes.md
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -166,6 +284,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -189,13 +309,21 @@ jobs:
             NUVIO_RELEASE_STORE_PASSWORD
             NUVIO_RELEASE_KEY_ALIAS
             NUVIO_RELEASE_KEY_PASSWORD
-            TRAKT_CLIENT_ID
-            TRAKT_CLIENT_SECRET
           )
           for property_name in "${required_properties[@]}"; do
             if ! grep -Eq "^${property_name}=.+" local.properties; then
               echo "Missing required property: ${property_name}" >&2
               exit 1
+            fi
+          done
+
+          optional_properties=(
+            TRAKT_CLIENT_ID
+            TRAKT_CLIENT_SECRET
+          )
+          for property_name in "${optional_properties[@]}"; do
+            if ! grep -Eq "^${property_name}=.+" local.properties; then
+              echo "::warning::Optional property ${property_name} is missing; Trakt will be unavailable."
             fi
           done
 
@@ -211,7 +339,7 @@ jobs:
 
   ios:
     name: Build iOS IPA
-    if: inputs.mode != 'dry-run'
+    if: inputs.mode != 'dry-run' && inputs.build_ios
     needs: prepare
     runs-on: xcode-27
     timeout-minutes: 120
@@ -226,6 +354,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -281,7 +411,7 @@ jobs:
 
   release:
     name: Create ${{ inputs.mode }} release
-    if: inputs.mode != 'dry-run'
+    if: ${{ !cancelled() && inputs.mode != 'dry-run' && needs.prepare.result == 'success' && needs.android.result == 'success' }}
     needs:
       - prepare
       - android
@@ -293,9 +423,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_MODE: ${{ inputs.mode }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.prepare.outputs.release_commit }}
       RELEASE_TITLE: ${{ needs.prepare.outputs.title }}
       RELEASE_PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
-      RELEASE_BRANCH: ${{ github.ref_name }}
 
     steps:
       - name: Download release artifacts
@@ -315,7 +445,7 @@ jobs:
           release_args=(
             "${RELEASE_TAG}"
             --repo "${GITHUB_REPOSITORY}"
-            --target "${RELEASE_BRANCH}"
+            --target "${RELEASE_COMMIT}"
             --title "${RELEASE_TITLE}"
             --notes-file release-assets/release-notes.md
           )
@@ -331,7 +461,7 @@ jobs:
 
   store:
     name: Update sideload source
-    if: inputs.mode == 'publish' && needs.prepare.outputs.prerelease != 'true'
+    if: inputs.mode == 'publish' && inputs.update_store && needs.prepare.outputs.prerelease != 'true'
     needs:
       - prepare
       - release

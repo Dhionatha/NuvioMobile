@@ -4,6 +4,7 @@ set -euo pipefail
 
 version_file="${VERSION_FILE:-iosApp/Configuration/Version.xcconfig}"
 target_ref="${1:-HEAD}"
+tag_suffix="${TAG_SUFFIX:-}"
 
 if ! git cat-file -e "${target_ref}^{commit}" 2>/dev/null; then
     echo "Unknown release target: ${target_ref}" >&2
@@ -51,6 +52,15 @@ if [[ ! "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; the
     exit 1
 fi
 
+if [[ ! "$tag_suffix" =~ ^[0-9A-Za-z._-]*$ ]]; then
+    echo "Invalid tag suffix: ${tag_suffix}" >&2
+    exit 1
+fi
+
+if [[ -n "$tag_suffix" && "$tag_suffix" != -* ]]; then
+    tag_suffix="-${tag_suffix}"
+fi
+
 if [[ ! "$current_build" =~ ^[0-9]+$ || ! "$previous_build" =~ ^[0-9]+$ ]]; then
     echo "Could not read CURRENT_PROJECT_VERSION from ${version_file}." >&2
     exit 1
@@ -76,6 +86,9 @@ elif [[ "$version_suffix" == "rc" ]]; then
 elif [[ "$version_suffix" == rc.* ]]; then
     release_title="Release Candidate ${version_core} (${version_suffix#rc.})"
 fi
+if [[ -n "$tag_suffix" ]]; then
+    release_title="${release_title}${tag_suffix}"
+fi
 release_prerelease="false"
 version_major="${current_version%%.*}"
 if [[ -n "$version_suffix" ]] && (( 10#$version_major >= 1 )); then
@@ -88,7 +101,7 @@ fi
 
 printf 'version=%s\n' "$current_version"
 printf 'build=%s\n' "$current_build"
-printf 'tag=%s\n' "$current_version"
+printf 'tag=%s%s\n' "$current_version" "$tag_suffix"
 printf 'title=%s\n' "$release_title"
 printf 'prerelease=%s\n' "$release_prerelease"
 printf 'release_commit=%s\n' "$(git rev-parse "${target_ref}^{commit}")"
