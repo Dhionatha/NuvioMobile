@@ -1,0 +1,76 @@
+name: Dev Release
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-release
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Detect a new dev version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      needs_release: ${{ steps.version.outputs.needs_release }}
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Detect release for the current version
+        id: version
+        env:
+          TAG_SUFFIX: "-dev.1"
+        run: |
+          version="$(
+            sed -nE 's/^[[:space:]]*MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\1/p' \
+              iosApp/Configuration/Version.xcconfig \
+              | head -n 1
+          )"
+          if [[ -z "${version}" ]]; then
+            echo "Could not read MARKETING_VERSION." >&2
+            exit 1
+          fi
+
+          git fetch --tags origin
+          existing_tags="$(
+            {
+              git tag --list "${version}${TAG_SUFFIX}"
+              git tag --list "${version}${TAG_SUFFIX}-*"
+            } | sort -u
+          )"
+          if [[ -n "${existing_tags}" ]]; then
+            echo "A dev release already exists for ${version}:" >&2
+            echo "${existing_tags}" >&2
+            needs_release=false
+          else
+            needs_release=true
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "needs_release=${needs_release}" >> "${GITHUB_OUTPUT}"
+
+  release:
+    name: Release ${{ needs.detect.outputs.version }} for dev
+    needs: detect
+    if: needs.detect.outputs.needs_release == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/android-release.yml
+    with:
+      mode: publish
+      tag_suffix: "-dev.1"
+      enforce_bump_final: false
+      build_ios: false
+      update_store: false
+      prerelease: true
+    secrets: inherit
