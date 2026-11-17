@@ -82,9 +82,17 @@ internal class MdbListRatingsRepository(
         try {
             client.checkCredential(first.credential)
             val ratings = if (batch.size == 1) {
-                mapOf(first.imdbId to parseMdbListRatings(client.getMedia(first.mediaType, first.imdbId, first.credential)))
+                mapOf(
+                    first.imdbId to parseMdbListRatings(
+                        payload = client.getMedia(first.mediaType, first.imdbId, first.credential),
+                        mediaType = first.mediaType,
+                    ),
+                )
             } else {
-                parseMdbListRatingsBatch(client.getMediaBatch(first.mediaType, batch.map { it.first.imdbId }, first.credential))
+                parseMdbListRatingsBatch(
+                    payload = client.getMediaBatch(first.mediaType, batch.map { it.first.imdbId }, first.credential),
+                    mediaType = first.mediaType,
+                )
             }
             client.checkCredential(first.credential)
             synchronized(lock) {
