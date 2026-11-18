@@ -377,6 +377,7 @@ class SimklSyncEngineTest {
         val client = SimklApiClient(
             engine = engine,
             accessToken = { "token" },
+            onTokenRejected = { null },
             onUnauthorized = {},
             nowEpochMs = { now },
             sleep = { duration -> now += duration },
@@ -410,6 +411,7 @@ class SimklSyncEngineTest {
             val client = SimklApiClient(
                 engine = engine,
                 accessToken = { "token" },
+                onTokenRejected = { null },
                 onUnauthorized = {},
                 nowEpochMs = { 0L },
                 sleep = {},

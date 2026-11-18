@@ -282,13 +282,70 @@ class SimklApiClientTest {
         retryHarness.client.execute(SimklApiRequest(SimklHttpMethod.GET, "/limited"))
         assertEquals(listOf(3_000L), retryHarness.sleeps)
 
-        val unauthorizedEngine = RecordingEngine(response(401))
+        val unauthorizedEngine = RecordingEngine(
+            response(401, """{"error":"user_token_required","code":401}"""),
+        )
         val unauthorizedHarness = TestHarness(unauthorizedEngine)
         assertFailsWith<SimklApiException> {
             unauthorizedHarness.client.execute(SimklApiRequest(SimklHttpMethod.GET, "/private"))
         }
         assertTrue(unauthorizedHarness.wasUnauthorized)
+        assertTrue(unauthorizedHarness.refreshRequests.isEmpty())
         assertEquals(1, unauthorizedEngine.requests.size)
+    }
+
+    @Test
+    fun `rejected token is refreshed once and the request is retried with it`() = runBlocking {
+        val engine = RecordingEngine(response(401), response(200))
+        val harness = TestHarness(
+            engine = engine,
+            initialToken = "old-token",
+            refreshResult = { "new-token" },
+        )
+
+        harness.client.execute(SimklApiRequest(SimklHttpMethod.GET, "/private"))
+
+        assertEquals(listOf<String?>("old-token"), harness.refreshRequests)
+        assertEquals(2, engine.requests.size)
+        assertEquals("Bearer old-token", engine.requests[0].headers["Authorization"])
+        assertEquals("Bearer new-token", engine.requests[1].headers["Authorization"])
+        assertFalse(harness.wasUnauthorized)
+    }
+
+    @Test
+    fun `failed refresh preserves the session instead of signing the user out`() = runBlocking {
+        val engine = RecordingEngine(response(401))
+        val harness = TestHarness(
+            engine = engine,
+            initialToken = "old-token",
+            refreshResult = { null },
+        )
+
+        assertFailsWith<SimklApiException> {
+            harness.client.execute(SimklApiRequest(SimklHttpMethod.GET, "/private"))
+        }
+
+        assertEquals(listOf<String?>("old-token"), harness.refreshRequests)
+        assertEquals(1, engine.requests.size)
+        assertFalse(harness.wasUnauthorized)
+    }
+
+    @Test
+    fun `second unauthorized response after a refresh ends the session`() = runBlocking {
+        val engine = RecordingEngine(response(401), response(401))
+        val harness = TestHarness(
+            engine = engine,
+            initialToken = "old-token",
+            refreshResult = { "new-token" },
+        )
+
+        assertFailsWith<SimklApiException> {
+            harness.client.execute(SimklApiRequest(SimklHttpMethod.GET, "/private"))
+        }
+
+        assertEquals(2, engine.requests.size)
+        assertEquals(listOf<String?>("old-token"), harness.refreshRequests)
+        assertTrue(harness.wasUnauthorized)
     }
 
     @Test
@@ -361,17 +418,27 @@ class SimklApiClientTest {
     private class TestHarness(
         engine: RecordingEngine,
         responseDurationMs: Long = 0L,
+        initialToken: String? = "token",
+        private val refreshResult: (String?) -> String? = { null },
     ) {
         var now = 0L
         val sleeps = mutableListOf<Long>()
         var wasUnauthorized = false
         var wasScopeDenied = false
+        var currentToken = initialToken
+        val refreshRequests = mutableListOf<String?>()
         val client = SimklApiClient(
             engine = engine.also { recording ->
                 recording.now = { now }
                 recording.onResponse = { now += responseDurationMs }
             },
-            accessToken = { "token" },
+            accessToken = { currentToken },
+            onTokenRejected = { rejectedToken ->
+                refreshRequests += rejectedToken
+                refreshResult(rejectedToken)?.also { refreshedToken ->
+                    currentToken = refreshedToken
+                }
+            },
             onUnauthorized = { wasUnauthorized = true },
             onInsufficientScope = { wasScopeDenied = true },
             nowEpochMs = { now },

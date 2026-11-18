@@ -9,6 +9,8 @@ internal val SIMKL_AUTHORIZE_URL: String = if (SimklConfig.USE_OAUTH2) {
 } else {
     "https://simkl.com/oauth/authorize"
 }
+internal val simklTokenEndpointPath: String =
+    if (SimklConfig.USE_OAUTH2) "/oauth2/token" else "/oauth/token"
 
 internal val simklAppVersion: String
     get() = AppVersionConfig.VERSION_NAME.ifBlank { "dev" }
