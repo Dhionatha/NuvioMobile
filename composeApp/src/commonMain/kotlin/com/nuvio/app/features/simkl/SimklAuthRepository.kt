@@ -1,6 +1,7 @@
 package com.nuvio.app.features.simkl
 
 import co.touchlab.kermit.Logger
+import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tracking.TrackingAuthProvider
 import com.nuvio.app.features.tracking.TrackingCapability
 import com.nuvio.app.features.tracking.TrackingProviderDescriptor
@@ -32,6 +33,7 @@ object SimklAuthRepository : TrackingAuthProvider {
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val authorizationMutex = Mutex()
+    private val refreshMutex = Mutex()
 
     private val _uiState = MutableStateFlow(SimklAuthUiState())
     val uiState: StateFlow<SimklAuthUiState> = _uiState.asStateFlow()
@@ -58,6 +60,11 @@ object SimklAuthRepository : TrackingAuthProvider {
     private var hasLoaded = false
     private var storedState = SimklStoredAuthState()
     private var accessToken: String? = null
+    private var refreshToken: String? = null
+
+    internal var storage: SimklAuthStorageApi = SimklAuthStorage
+    internal var nowEpochMs: () -> Long = { SimklPlatformClock.nowEpochMs() }
+    internal var authHttpEngine: SimklHttpEngine = simklHttpEngine
 
     init {
         TrackingProviderRegistry.register(this)
@@ -76,11 +83,14 @@ object SimklAuthRepository : TrackingAuthProvider {
         hasLoaded = false
         storedState = SimklStoredAuthState()
         accessToken = null
-        publish()
+        refreshToken = null
+        storage.saveAccessToken(null)
+        storage.saveRefreshToken(null)
+        publish(isLoading = false, error = null)
     }
 
     override fun removeStoredProfile(profileId: Int) {
-        SimklAuthStorage.removeProfile(profileId)
+        storage.removeProfile(profileId)
     }
 
     fun snapshot(): SimklAuthUiState {
@@ -98,10 +108,10 @@ object SimklAuthRepository : TrackingAuthProvider {
         }
 
         val material = generateSimklPkceMaterial()
-        SimklAuthStorage.saveCodeVerifier(material.verifier)
+        storage.saveCodeVerifier(material.verifier)
         storedState = storedState.copy(
             pendingAuthorizationState = material.state,
-            pendingAuthorizationStartedAtEpochMs = SimklPlatformClock.nowEpochMs(),
+            pendingAuthorizationStartedAtEpochMs = nowEpochMs(),
         )
         persistMetadata()
         publish(error = null)
@@ -111,7 +121,7 @@ object SimklAuthRepository : TrackingAuthProvider {
     fun pendingAuthorizationUrl(): String? {
         ensureLoaded()
         val state = storedState.pendingAuthorizationState?.takeIf(String::isNotBlank) ?: return null
-        val verifier = SimklAuthStorage.loadCodeVerifier()?.takeIf(String::isNotBlank) ?: run {
+        val verifier = storage.loadCodeVerifier()?.takeIf(String::isNotBlank) ?: run {
             clearPendingAuthorization()
             persistMetadata()
             publish(error = SimklAuthError.AUTHORIZATION_EXPIRED)
@@ -119,7 +129,7 @@ object SimklAuthRepository : TrackingAuthProvider {
         }
         if (isSimklAuthorizationExpired(
                 startedAtEpochMs = storedState.pendingAuthorizationStartedAtEpochMs,
-                nowEpochMs = SimklPlatformClock.nowEpochMs(),
+                nowEpochMs = nowEpochMs(),
             )
         ) {
             clearPendingAuthorization()
@@ -162,24 +172,165 @@ object SimklAuthRepository : TrackingAuthProvider {
 
     fun onDisconnectRequested() {
         ensureLoaded()
+        val revokedRefreshToken = refreshToken?.takeIf(String::isNotBlank)
         accessToken = null
-        SimklAuthStorage.saveAccessToken(null)
+        refreshToken = null
+        storage.saveAccessToken(null)
+        storage.saveRefreshToken(null)
         clearPendingAuthorization()
         storedState = SimklStoredAuthState()
         persistMetadata()
         SimklSyncRepository.clearLocalState()
         publish(error = null)
+        // Local state is already gone; revoking the grant is best effort and must not block the
+        // UI or be able to resurrect credentials if the request fails.
+        if (SimklConfig.USE_OAUTH2 && revokedRefreshToken != null) {
+            scope.launch { revokeAuthorization(revokedRefreshToken) }
+        }
     }
 
-    internal fun authorizedAccessToken(): String? {
+    internal suspend fun authorizedAccessToken(): String? {
         ensureLoaded()
-        val token = accessToken?.takeIf(String::isNotBlank) ?: return null
-        val expiresAt = storedState.tokenExpiresAtEpochMs
-        if (expiresAt != null && SimklPlatformClock.nowEpochMs() >= expiresAt - TOKEN_EXPIRY_SKEW_MS) {
-            invalidateCredentials(SimklAuthError.AUTHORIZATION_EXPIRED)
-            return null
+        return refreshAccessToken()
+    }
+
+    /**
+     * Returns a usable access token, refreshing the AUTH V2 grant when the stored token is close
+     * to expiring or when the server rejected [rejectedAccessToken].
+     *
+     * Concurrent callers share [refreshMutex]; whoever loses the race sees the new token and
+     * returns it without minting a second one. `null` means no token is available right now.
+     * Definitive grant failures clear local credentials; transport failures preserve them.
+     */
+    internal suspend fun refreshAccessToken(rejectedAccessToken: String? = null): String? {
+        ensureLoaded()
+        return refreshMutex.withLock {
+            val profileId = ProfileRepository.activeProfileId
+            val currentToken = accessToken?.takeIf(String::isNotBlank)
+
+            if (
+                rejectedAccessToken != null &&
+                currentToken != null &&
+                currentToken != rejectedAccessToken
+            ) {
+                return@withLock currentToken
+            }
+
+            val expiresAt = storedState.tokenExpiresAtEpochMs
+            val sessionExpired = expiresAt != null && nowEpochMs() >= expiresAt - TOKEN_EXPIRY_SKEW_MS
+            val hasRefreshGrant = !refreshToken.isNullOrBlank()
+            if (
+                rejectedAccessToken == null &&
+                !sessionExpired &&
+                (currentToken != null || !hasRefreshGrant)
+            ) {
+                return@withLock currentToken
+            }
+
+            if (!SimklConfig.USE_OAUTH2) {
+                if (rejectedAccessToken != null) {
+                    invalidateCredentials(SimklAuthError.AUTHORIZATION_REVOKED)
+                }
+                return@withLock if (sessionExpired) null else currentToken
+            }
+
+            val storedRefreshToken = refreshToken?.takeIf(String::isNotBlank)
+            if (storedRefreshToken == null) {
+                // Users upgrading from a build that never stored a refresh token must not be
+                // signed out just because the access token is expiring. A rejected token is
+                // definitive, though: without a grant only a new authorization can recover.
+                if (rejectedAccessToken != null) {
+                    invalidateCredentials(SimklAuthError.AUTHORIZATION_REVOKED)
+                }
+                return@withLock null
+            }
+
+            val body = simklFormEncodedBody(
+                listOf(
+                    "grant_type" to "refresh_token",
+                    "client_id" to SimklConfig.CLIENT_ID,
+                    "refresh_token" to storedRefreshToken,
+                ),
+            )
+            val response = runCatching {
+                authHttpEngine.execute(
+                    method = "POST",
+                    url = buildSimklApiUrl(simklTokenEndpointPath),
+                    headers = simklRequestHeaders() + ("Content-Type" to FORM_CONTENT_TYPE),
+                    body = body,
+                )
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                log.w { "Simkl token refresh transport failure: ${error.message}" }
+            }.getOrNull() ?: return@withLock null
+
+            // The profile or the grant may have changed while the request was in flight.
+            if (ProfileRepository.activeProfileId != profileId || refreshToken != storedRefreshToken) {
+                return@withLock null
+            }
+
+            when (simklRefreshResponseAction(response.status, response.errorCode(json))) {
+                SimklRefreshResponseAction.INVALIDATE -> {
+                    log.w {
+                        "Simkl rejected the refresh token with HTTP ${response.status}; " +
+                            "clearing local credentials"
+                    }
+                    invalidateCredentials(SimklAuthError.AUTHORIZATION_REVOKED)
+                    return@withLock null
+                }
+
+                SimklRefreshResponseAction.PRESERVE -> {
+                    log.w { "Simkl token refresh failed with HTTP ${response.status}" }
+                    return@withLock null
+                }
+
+                SimklRefreshResponseAction.ACCEPT -> Unit
+            }
+
+            val token = runCatching { json.decodeFromString<SimklTokenResponse>(response.body) }
+                .getOrNull()
+                ?.takeIf { it.accessToken.isNotBlank() }
+            if (token == null) {
+                log.w { "Simkl token refresh returned an invalid body" }
+                return@withLock null
+            }
+
+            val nextRefreshToken = simklRefreshTokenValue(token.refreshToken, storedRefreshToken)
+            accessToken = token.accessToken
+            refreshToken = nextRefreshToken
+            storage.saveAccessToken(token.accessToken)
+            storage.saveRefreshToken(nextRefreshToken)
+            storedState = storedState.copy(
+                tokenExpiresAtEpochMs = simklAccessTokenExpiresAt(token.expiresIn, nowEpochMs()),
+            )
+            persistMetadata()
+            publish(error = null)
+            token.accessToken
         }
-        return token
+    }
+
+    /** Best-effort revocation run after the local credentials were already cleared. */
+    internal suspend fun revokeAuthorization(refreshToken: String): Boolean {
+        if (refreshToken.isBlank() || !SimklConfig.USE_OAUTH2) return false
+        return try {
+            val response = authHttpEngine.execute(
+                method = "POST",
+                url = buildSimklApiUrl(REVOKE_ENDPOINT_PATH),
+                headers = simklRequestHeaders() + ("Content-Type" to FORM_CONTENT_TYPE),
+                body = simklFormEncodedBody(
+                    listOf(
+                        "client_id" to SimklConfig.CLIENT_ID,
+                        "token" to refreshToken,
+                    ),
+                ),
+            )
+            response.status in 200..299
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.w { "Simkl token revocation failed: ${error.message}" }
+            false
+        }
     }
 
     internal fun onUnauthorizedResponse() {
@@ -217,10 +368,10 @@ object SimklAuthRepository : TrackingAuthProvider {
         authorizationMutex.withLock {
             publish(isLoading = true, error = null)
             val expectedState = storedState.pendingAuthorizationState
-            val verifier = SimklAuthStorage.loadCodeVerifier()
+            val verifier = storage.loadCodeVerifier()
             val isExpired = isSimklAuthorizationExpired(
                 startedAtEpochMs = storedState.pendingAuthorizationStartedAtEpochMs,
-                nowEpochMs = SimklPlatformClock.nowEpochMs(),
+                nowEpochMs = nowEpochMs(),
             )
             if (expectedState.isNullOrBlank() || verifier.isNullOrBlank() || isExpired) {
                 clearPendingAuthorization()
@@ -245,7 +396,7 @@ object SimklAuthRepository : TrackingAuthProvider {
                 SimklApi.client.execute(
                     SimklApiRequest(
                         method = SimklHttpMethod.POST,
-                        path = if (SimklConfig.USE_OAUTH2) "/oauth2/token" else "/oauth/token",
+                        path = simklTokenEndpointPath,
                         body = json.encodeToString(request),
                         requiresAuthentication = false,
                         retryPolicy = SimklRetryPolicy.NEVER,
@@ -281,12 +432,14 @@ object SimklAuthRepository : TrackingAuthProvider {
             }
 
             accessToken = token.accessToken
-            SimklAuthStorage.saveAccessToken(token.accessToken)
+            storage.saveAccessToken(token.accessToken)
+            // AUTH V2 echoes the same non-rotating refresh token, but a reconnect may still omit
+            // it; keep the previous value instead of dropping the grant.
+            refreshToken = simklRefreshTokenValue(token.refreshToken, refreshToken)
+            storage.saveRefreshToken(refreshToken)
             clearPendingAuthorization()
             storedState = storedState.copy(
-                tokenExpiresAtEpochMs = token.expiresIn
-                    ?.takeIf { seconds -> seconds > 0L }
-                    ?.let { seconds -> SimklPlatformClock.nowEpochMs() + seconds * 1_000L },
+                tokenExpiresAtEpochMs = simklAccessTokenExpiresAt(token.expiresIn, nowEpochMs()),
             )
             persistMetadata()
             publish(isLoading = false, error = null)
@@ -326,7 +479,7 @@ object SimklAuthRepository : TrackingAuthProvider {
 
     private fun loadFromDisk() {
         hasLoaded = true
-        storedState = SimklAuthStorage.loadMetadataPayload()
+        storedState = storage.loadMetadataPayload()
             ?.trim()
             ?.takeIf(String::isNotEmpty)
             ?.let { payload ->
@@ -335,19 +488,19 @@ object SimklAuthRepository : TrackingAuthProvider {
                     .getOrNull()
             }
             ?: SimklStoredAuthState()
-        accessToken = SimklAuthStorage.loadAccessToken()?.takeIf(String::isNotBlank)
-        if (accessToken != null && storedState.tokenExpiresAtEpochMs?.let { expiresAt ->
-                SimklPlatformClock.nowEpochMs() >= expiresAt - TOKEN_EXPIRY_SKEW_MS
+        accessToken = storage.loadAccessToken()?.takeIf(String::isNotBlank)
+        refreshToken = storage.loadRefreshToken()?.takeIf(String::isNotBlank)
+        if (storedState.tokenExpiresAtEpochMs?.let { expiresAt ->
+                nowEpochMs() >= expiresAt - TOKEN_EXPIRY_SKEW_MS
             } == true
         ) {
+            // Soft expiry: keep the refresh token and metadata (also on disk) so the next request
+            // can refresh silently instead of signing the user out.
             accessToken = null
-            SimklAuthStorage.saveAccessToken(null)
-            storedState = SimklStoredAuthState()
-            persistMetadata()
         }
         if (storedState.hasPendingAuthorization && isSimklAuthorizationExpired(
                 startedAtEpochMs = storedState.pendingAuthorizationStartedAtEpochMs,
-                nowEpochMs = SimklPlatformClock.nowEpochMs(),
+                nowEpochMs = nowEpochMs(),
             )
         ) {
             clearPendingAuthorization()
@@ -358,7 +511,9 @@ object SimklAuthRepository : TrackingAuthProvider {
 
     private fun invalidateCredentials(error: SimklAuthError) {
         accessToken = null
-        SimklAuthStorage.saveAccessToken(null)
+        refreshToken = null
+        storage.saveAccessToken(null)
+        storage.saveRefreshToken(null)
         clearPendingAuthorization()
         storedState = SimklStoredAuthState()
         persistMetadata()
@@ -367,7 +522,7 @@ object SimklAuthRepository : TrackingAuthProvider {
     }
 
     private fun clearPendingAuthorization() {
-        SimklAuthStorage.saveCodeVerifier(null)
+        storage.saveCodeVerifier(null)
         storedState = storedState.copy(
             pendingAuthorizationState = null,
             pendingAuthorizationStartedAtEpochMs = null,
@@ -375,14 +530,14 @@ object SimklAuthRepository : TrackingAuthProvider {
     }
 
     private fun persistMetadata() {
-        SimklAuthStorage.saveMetadataPayload(json.encodeToString(storedState))
+        storage.saveMetadataPayload(json.encodeToString(storedState))
     }
 
     private fun publish(
         isLoading: Boolean = _uiState.value.isLoading,
         error: SimklAuthError? = _uiState.value.error,
     ) {
-        val authenticated = !accessToken.isNullOrBlank()
+        val authenticated = !accessToken.isNullOrBlank() || !refreshToken.isNullOrBlank()
         _isAuthenticated.value = authenticated
         _uiState.value = SimklAuthUiState(
             mode = when {
@@ -410,6 +565,8 @@ object SimklAuthRepository : TrackingAuthProvider {
         )
 
     private const val TOKEN_EXPIRY_SKEW_MS = 60_000L
+    private const val REVOKE_ENDPOINT_PATH = "/oauth2/revoke"
+    private const val FORM_CONTENT_TYPE = "application/x-www-form-urlencoded"
 }
 
 @Serializable
@@ -427,6 +584,7 @@ private data class SimklTokenResponse(
     @SerialName("token_type") val tokenType: String? = null,
     val scope: String? = null,
     @SerialName("expires_in") val expiresIn: Long? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
 )
 
 @Serializable

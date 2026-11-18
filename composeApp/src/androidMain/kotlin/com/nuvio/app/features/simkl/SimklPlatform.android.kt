@@ -28,10 +28,11 @@ internal actual object SimklPkceCrypto {
         MessageDigest.getInstance("SHA-256").digest(value)
 }
 
-internal actual object SimklAuthStorage {
+internal actual object SimklAuthStorage : SimklAuthStorageApi {
     private const val PREFERENCES_NAME = "nuvio_simkl_auth"
     private const val METADATA_KEY = "simkl_auth_metadata"
     private const val ACCESS_TOKEN_KEY = "simkl_access_token"
+    private const val REFRESH_TOKEN_KEY = "simkl_refresh_token"
     private const val CODE_VERIFIER_KEY = "simkl_code_verifier"
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     private const val KEY_ALIAS = "nuvio.simkl.credentials.v1"
@@ -44,25 +45,30 @@ internal actual object SimklAuthStorage {
         preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     }
 
-    actual fun loadMetadataPayload(): String? =
+    actual override fun loadMetadataPayload(): String? =
         preferences?.getString(ProfileScopedKey.of(METADATA_KEY), null)
 
-    actual fun saveMetadataPayload(payload: String) {
+    actual override fun saveMetadataPayload(payload: String) {
         preferences?.edit()?.putString(ProfileScopedKey.of(METADATA_KEY), payload)?.apply()
     }
 
-    actual fun loadAccessToken(): String? = loadEncrypted(ACCESS_TOKEN_KEY)
+    actual override fun loadAccessToken(): String? = loadEncrypted(ACCESS_TOKEN_KEY)
 
-    actual fun saveAccessToken(value: String?) = saveEncrypted(ACCESS_TOKEN_KEY, value)
+    actual override fun saveAccessToken(value: String?) = saveEncrypted(ACCESS_TOKEN_KEY, value)
 
-    actual fun loadCodeVerifier(): String? = loadEncrypted(CODE_VERIFIER_KEY)
+    actual override fun loadRefreshToken(): String? = loadEncrypted(REFRESH_TOKEN_KEY)
 
-    actual fun saveCodeVerifier(value: String?) = saveEncrypted(CODE_VERIFIER_KEY, value)
+    actual override fun saveRefreshToken(value: String?) = saveEncrypted(REFRESH_TOKEN_KEY, value)
 
-    actual fun removeProfile(profileId: Int) {
+    actual override fun loadCodeVerifier(): String? = loadEncrypted(CODE_VERIFIER_KEY)
+
+    actual override fun saveCodeVerifier(value: String?) = saveEncrypted(CODE_VERIFIER_KEY, value)
+
+    actual override fun removeProfile(profileId: Int) {
         preferences?.edit()
             ?.remove(ProfileScopedKey.of(METADATA_KEY, profileId))
             ?.remove(ProfileScopedKey.of(ACCESS_TOKEN_KEY, profileId))
+            ?.remove(ProfileScopedKey.of(REFRESH_TOKEN_KEY, profileId))
             ?.remove(ProfileScopedKey.of(CODE_VERIFIER_KEY, profileId))
             ?.apply()
     }

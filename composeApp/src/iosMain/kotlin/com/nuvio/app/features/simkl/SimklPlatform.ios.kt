@@ -65,30 +65,36 @@ internal actual object SimklPkceCrypto {
     }
 }
 
-internal actual object SimklAuthStorage {
+internal actual object SimklAuthStorage : SimklAuthStorageApi {
     private const val METADATA_KEY = "simkl_auth_metadata"
     private const val ACCESS_TOKEN_KEY = "simkl_access_token"
+    private const val REFRESH_TOKEN_KEY = "simkl_refresh_token"
     private const val CODE_VERIFIER_KEY = "simkl_code_verifier"
     private const val KEYCHAIN_SERVICE = "com.nuvio.media.simkl"
 
-    actual fun loadMetadataPayload(): String? =
+    actual override fun loadMetadataPayload(): String? =
         NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(METADATA_KEY))
 
-    actual fun saveMetadataPayload(payload: String) {
+    actual override fun saveMetadataPayload(payload: String) {
         NSUserDefaults.standardUserDefaults.setObject(payload, forKey = ProfileScopedKey.of(METADATA_KEY))
     }
 
-    actual fun loadAccessToken(): String? = loadKeychainValue(ACCESS_TOKEN_KEY)
+    actual override fun loadAccessToken(): String? = loadKeychainValue(ACCESS_TOKEN_KEY)
 
-    actual fun saveAccessToken(value: String?) = saveKeychainValue(ACCESS_TOKEN_KEY, value)
+    actual override fun saveAccessToken(value: String?) = saveKeychainValue(ACCESS_TOKEN_KEY, value)
 
-    actual fun loadCodeVerifier(): String? = loadKeychainValue(CODE_VERIFIER_KEY)
+    actual override fun loadRefreshToken(): String? = loadKeychainValue(REFRESH_TOKEN_KEY)
 
-    actual fun saveCodeVerifier(value: String?) = saveKeychainValue(CODE_VERIFIER_KEY, value)
+    actual override fun saveRefreshToken(value: String?) = saveKeychainValue(REFRESH_TOKEN_KEY, value)
 
-    actual fun removeProfile(profileId: Int) {
+    actual override fun loadCodeVerifier(): String? = loadKeychainValue(CODE_VERIFIER_KEY)
+
+    actual override fun saveCodeVerifier(value: String?) = saveKeychainValue(CODE_VERIFIER_KEY, value)
+
+    actual override fun removeProfile(profileId: Int) {
         NSUserDefaults.standardUserDefaults.removeObjectForKey(ProfileScopedKey.of(METADATA_KEY, profileId))
         deleteKeychainValue(ACCESS_TOKEN_KEY, profileId)
+        deleteKeychainValue(REFRESH_TOKEN_KEY, profileId)
         deleteKeychainValue(CODE_VERIFIER_KEY, profileId)
     }
 
