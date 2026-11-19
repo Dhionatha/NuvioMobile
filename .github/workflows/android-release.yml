@@ -142,11 +142,17 @@ jobs:
           to_ref="${CURRENT_BUMP}"
           if [[ -n "${TAG_SUFFIX}" ]]; then
             to_ref="$(git rev-parse HEAD)"
+            # The suffix carries the increment (-custom.5), so the previous
+            # release is the newest tag in the same family (-custom.*), not
+            # one that matches the exact suffix.
+            tag_family="${TAG_SUFFIX}"
+            if [[ "${tag_family}" =~ ^(.*)\.[0-9]+$ ]]; then
+              tag_family="${BASH_REMATCH[1]}"
+            fi
             previous_tag="$(
-              {
-                git tag --list "*${TAG_SUFFIX}"
-                git tag --list "*${TAG_SUFFIX}-*"
-              } | grep -vx "${RELEASE_TAG}" | sort -rV | head -n 1 || true
+              git tag --merged "${to_ref}" \
+                --list "*${tag_family}" "*${tag_family}.*" \
+                | grep -vx "${RELEASE_TAG}" | sort -rV | head -n 1 || true
             )"
             if [[ -n "${previous_tag}" ]]; then
               from_ref="${previous_tag}"
