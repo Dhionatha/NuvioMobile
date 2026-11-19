@@ -179,7 +179,7 @@ internal fun LazyListScope.metaScreenSettingsContent(
                     onCheckedChange = { MetaScreenSettingsRepository.setTabLayout(it) },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
-                RatingsSettings(isTablet = isTablet, uiState = uiState)
+                OverallRatingsSettings(isTablet = isTablet, uiState = uiState)
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_meta_parents_guide),
@@ -188,6 +188,8 @@ internal fun LazyListScope.metaScreenSettingsContent(
                     isTablet = isTablet,
                     onCheckedChange = MetaScreenSettingsRepository::setShowParentsGuide,
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                EpisodeRatingsSettings(isTablet = isTablet, uiState = uiState)
                 SettingsGroupDivider(isTablet = isTablet)
                 val shuffleProfile by remember {
                     EpisodeShuffleRepository.ensureLoaded()

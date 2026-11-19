@@ -17,7 +17,7 @@ import nuvio.composeapp.generated.resources.layout_ratings_show
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun RatingsSettings(
+internal fun OverallRatingsSettings(
     isTablet: Boolean,
     uiState: MetaScreenSettingsUiState,
 ) {
@@ -31,7 +31,13 @@ internal fun RatingsSettings(
         isTablet = isTablet,
         onCheckedChange = MetaScreenSettingsRepository::setShowOverallRatings,
     )
-    SettingsGroupDivider(isTablet = isTablet)
+}
+
+@Composable
+internal fun EpisodeRatingsSettings(
+    isTablet: Boolean,
+    uiState: MetaScreenSettingsUiState,
+) {
     SettingsChipRow(
         title = stringResource(Res.string.layout_episode_ratings),
         description = stringResource(Res.string.layout_episode_ratings_sub),
