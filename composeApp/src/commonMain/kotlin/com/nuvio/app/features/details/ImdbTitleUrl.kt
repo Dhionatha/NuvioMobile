@@ -10,7 +10,18 @@ private val ImdbTitleIdPattern = Regex("tt\\d+")
  * keep the rating non-interactive instead of opening a broken page.
  */
 internal fun MetaDetails.imdbTitleUrl(): String? =
-    sequenceOf(imdbId, this.id)
+    imdbTitleId()?.let { titleId -> "https://www.imdb.com/title/$titleId/" }
+
+/**
+ * IMDb Parents Guide URL for this meta, following the same title id resolution as [imdbTitleUrl].
+ *
+ * Returns `null` when no IMDb title id is available, so the details screen can hide the shortcut
+ * instead of opening a broken page.
+ */
+internal fun MetaDetails.imdbParentsGuideUrl(): String? =
+    imdbTitleId()?.let { titleId -> "https://www.imdb.com/title/$titleId/parentalguide/" }
+
+private fun MetaDetails.imdbTitleId(): String? =
+    sequenceOf(imdbId, id)
         .mapNotNull { candidate -> candidate?.let { ImdbTitleIdPattern.find(it)?.value } }
         .firstOrNull()
-        ?.let { titleId -> "https://www.imdb.com/title/$titleId/" }

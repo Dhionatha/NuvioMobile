@@ -50,6 +50,7 @@ data class MetaScreenSettingsUiState(
     val blurUnwatchedEpisodes: Boolean = false,
     val posterTransitionEnabled: Boolean = false,
     val showOverallRatings: Boolean = true,
+    val showParentsGuide: Boolean = true,
     val episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
 )
 
@@ -135,6 +136,8 @@ private data class StoredMetaScreenSettingsPayload(
     val posterTransitionEnabled: Boolean = false,
     @SerialName("show_overall_ratings")
     val showOverallRatings: Boolean = true,
+    @SerialName("show_parents_guide")
+    val showParentsGuide: Boolean = true,
     @SerialName("episode_ratings_visibility")
     val episodeRatingsVisibility: String = EpisodeRatingsVisibility.SHOW_ALL.name,
 )
@@ -215,6 +218,7 @@ object MetaScreenSettingsRepository {
     private var episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal
     private var blurUnwatchedEpisodes: Boolean = false
     private var showOverallRatings: Boolean = true
+    private var showParentsGuide: Boolean = true
     private var episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
     private var posterTransitionEnabled: Boolean = false
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
@@ -238,6 +242,7 @@ object MetaScreenSettingsRepository {
                 blurUnwatchedEpisodes = parsed.blurUnwatchedEpisodes
                 posterTransitionEnabled = parsed.posterTransitionEnabled
                 showOverallRatings = parsed.showOverallRatings
+                showParentsGuide = parsed.showParentsGuide
                 episodeRatingsVisibility = EpisodeRatingsVisibility.parse(parsed.episodeRatingsVisibility)
                 preferences = parsed.items.mapNotNull { item ->
                     val key = runCatching { MetaScreenSectionKey.valueOf(item.key) }.getOrNull() ?: return@mapNotNull null
@@ -261,6 +266,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
+        showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
         _uiState.value = MetaScreenSettingsUiState()
         ensureLoaded()
@@ -312,6 +318,13 @@ object MetaScreenSettingsRepository {
         persist()
     }
 
+    fun setShowParentsGuide(enabled: Boolean) {
+        ensureLoaded()
+        showParentsGuide = enabled
+        publish()
+        persist()
+    }
+
     fun setEpisodeRatingsVisibility(visibility: EpisodeRatingsVisibility) {
         ensureLoaded()
         episodeRatingsVisibility = visibility
@@ -349,6 +362,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
+        showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
         _uiState.value = MetaScreenSettingsUiState()
     }
@@ -363,6 +377,7 @@ object MetaScreenSettingsRepository {
         backgroundMode: MetaScreenBackgroundMode? = null,
         posterTransitionEnabled: Boolean = false,
         showOverallRatings: Boolean = true,
+        showParentsGuide: Boolean = true,
         episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
     ) {
         ensureLoaded()
@@ -373,6 +388,7 @@ object MetaScreenSettingsRepository {
         this.blurUnwatchedEpisodes = blurUnwatchedEpisodes
         this.posterTransitionEnabled = posterTransitionEnabled
         this.showOverallRatings = showOverallRatings
+        this.showParentsGuide = showParentsGuide
         this.episodeRatingsVisibility = episodeRatingsVisibility
         preferences = items.associate { item ->
             item.key to StoredMetaScreenSectionPreference(
@@ -403,6 +419,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
+        showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
         normalizePreferences()
         publish()
@@ -475,6 +492,7 @@ object MetaScreenSettingsRepository {
             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
             posterTransitionEnabled = posterTransitionEnabled,
             showOverallRatings = showOverallRatings,
+            showParentsGuide = showParentsGuide,
             episodeRatingsVisibility = episodeRatingsVisibility,
         )
     }
@@ -492,6 +510,7 @@ object MetaScreenSettingsRepository {
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     posterTransitionEnabled = posterTransitionEnabled,
                     showOverallRatings = showOverallRatings,
+                    showParentsGuide = showParentsGuide,
                     episodeRatingsVisibility = episodeRatingsVisibility.name,
                 ),
             ),

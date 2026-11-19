@@ -47,6 +47,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
 import com.nuvio.app.features.details.formatRuntimeForDisplay
 import com.nuvio.app.features.details.formatMetaReleaseLineForDetails
+import com.nuvio.app.features.details.imdbParentsGuideUrl
 import com.nuvio.app.features.details.imdbTitleUrl
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_AUDIENCE
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_IMDB
@@ -80,6 +81,7 @@ fun DetailMetaInfo(
     modifier: Modifier = Modifier,
     horizontalScrollPadding: Dp = 0.dp,
     showOverallRatings: Boolean = true,
+    showParentsGuide: Boolean = true,
     isMdbListActive: Boolean = false,
     onOpenExternalUrl: ((String) -> Unit)? = null,
 ) {
@@ -93,6 +95,11 @@ fun DetailMetaInfo(
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
         val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenExternalUrl = onOpenExternalUrl)
+        val parentsGuideClick = rememberImdbParentsGuideClick(
+            meta = meta,
+            onOpenExternalUrl = onOpenExternalUrl,
+            enabled = showParentsGuide,
+        )
         val linkedRatings = rememberLinkedExternalRatings(meta)
         val validImdbRating = meta.imdbRating
             ?.takeIf { showOverallRatings && !isMdbListActive }
@@ -104,6 +111,7 @@ fun DetailMetaInfo(
         val hasMetaRow = releaseLine != null ||
             runtimeText != null ||
             ageBadge != null ||
+            parentsGuideClick != null ||
             validImdbRating != null ||
             ratingState.isAvailable
         if (hasMetaRow) {
@@ -130,6 +138,12 @@ fun DetailMetaInfo(
                 }
                 ageBadge?.let { badge ->
                     DetailHeroMetaBadge(text = badge)
+                }
+                parentsGuideClick?.let { click ->
+                    ImdbParentsGuideBadge(
+                        contentDescription = stringResource(Res.string.details_parents_guide),
+                        onClick = click,
+                    )
                 }
                 if (validImdbRating != null) {
                     val imdbTextStyle = MaterialTheme.typography.titleMedium.copy(
@@ -279,6 +293,22 @@ internal fun rememberImdbRatingClick(
     return remember(imdbUrl, onOpenExternalUrl) {
         if (imdbUrl != null && onOpenExternalUrl != null) {
             { onOpenExternalUrl(imdbUrl) }
+        } else {
+            null
+        }
+    }
+}
+
+@Composable
+internal fun rememberImdbParentsGuideClick(
+    meta: MetaDetails,
+    onOpenExternalUrl: ((String) -> Unit)?,
+    enabled: Boolean = true,
+): (() -> Unit)? {
+    val parentsGuideUrl = remember(meta.id, meta.imdbId) { meta.imdbParentsGuideUrl() }
+    return remember(parentsGuideUrl, onOpenExternalUrl, enabled) {
+        if (enabled && parentsGuideUrl != null && onOpenExternalUrl != null) {
+            { onOpenExternalUrl(parentsGuideUrl) }
         } else {
             null
         }

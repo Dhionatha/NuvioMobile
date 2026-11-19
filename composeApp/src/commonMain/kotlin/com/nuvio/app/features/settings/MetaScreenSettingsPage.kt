@@ -105,6 +105,8 @@ import nuvio.composeapp.generated.resources.settings_meta_more_like_this_descrip
 import nuvio.composeapp.generated.resources.settings_meta_none
 import nuvio.composeapp.generated.resources.settings_meta_overview
 import nuvio.composeapp.generated.resources.settings_meta_overview_description
+import nuvio.composeapp.generated.resources.settings_meta_parents_guide
+import nuvio.composeapp.generated.resources.settings_meta_parents_guide_description
 import nuvio.composeapp.generated.resources.settings_meta_production
 import nuvio.composeapp.generated.resources.settings_meta_production_description
 import nuvio.composeapp.generated.resources.settings_meta_poster_transition
@@ -178,6 +180,14 @@ internal fun LazyListScope.metaScreenSettingsContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 RatingsSettings(isTablet = isTablet, uiState = uiState)
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_meta_parents_guide),
+                    description = stringResource(Res.string.settings_meta_parents_guide_description),
+                    checked = uiState.showParentsGuide,
+                    isTablet = isTablet,
+                    onCheckedChange = MetaScreenSettingsRepository::setShowParentsGuide,
+                )
                 SettingsGroupDivider(isTablet = isTablet)
                 val shuffleProfile by remember {
                     EpisodeShuffleRepository.ensureLoaded()
