@@ -66,6 +66,34 @@ class RatingsSettingsTest {
     }
 
     @Test
+    fun parentsGuideChoiceIsVisibleByDefaultAndRoundTripsThroughTheProfilePayload() {
+        assertTrue(MetaScreenSettingsRepository.uiState.value.showParentsGuide)
+
+        MetaScreenSettingsRepository.setShowParentsGuide(false)
+        val payload = MetaScreenSettingsStorage.loadPayload()!!
+
+        MetaScreenSettingsRepository.resetToDefaults()
+        assertTrue(MetaScreenSettingsRepository.uiState.value.showParentsGuide)
+
+        MetaScreenSettingsStorage.savePayload(payload)
+        MetaScreenSettingsRepository.onProfileChanged()
+        assertFalse(MetaScreenSettingsRepository.uiState.value.showParentsGuide)
+
+        MetaScreenSettingsRepository.setShowParentsGuide(true)
+        MetaScreenSettingsRepository.onProfileChanged()
+        assertTrue(MetaScreenSettingsRepository.uiState.value.showParentsGuide)
+    }
+
+    @Test
+    fun olderPayloadsKeepTheParentsGuideVisible() {
+        MetaScreenSettingsStorage.savePayload("""{"show_overall_ratings":false}""")
+        MetaScreenSettingsRepository.onProfileChanged()
+
+        assertTrue(MetaScreenSettingsRepository.uiState.value.showParentsGuide)
+        assertFalse(MetaScreenSettingsRepository.uiState.value.showOverallRatings)
+    }
+
+    @Test
     fun savingRatingsDoesNotChangeAnotherProfilesPayload() {
         val preferences = RuntimeEnvironment.getApplication()
             .getSharedPreferences("nuvio_meta_screen_settings", Context.MODE_PRIVATE)

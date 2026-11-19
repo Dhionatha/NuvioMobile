@@ -811,6 +811,11 @@ internal fun settingsSearchEntries(
                 stringResource(Res.string.layout_overall_ratings_sub_off),
         ),
         PlaybackSearchRow(
+            "meta-parents-guide",
+            stringResource(Res.string.settings_meta_parents_guide),
+            stringResource(Res.string.settings_meta_parents_guide_description),
+        ),
+        PlaybackSearchRow(
             "meta-episode-ratings",
             stringResource(Res.string.layout_episode_ratings),
             listOf(

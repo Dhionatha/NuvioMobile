@@ -1184,6 +1184,7 @@ fun MetaDetailsScreen(
                                                 meta = meta,
                                                 showOverview = isSectionEnabled(MetaScreenSectionKey.OVERVIEW),
                                                 showOverallRatings = metaScreenSettingsUiState.showOverallRatings,
+                                                showParentsGuide = metaScreenSettingsUiState.showParentsGuide,
                                                 isMdbListActive = mdbListSettings.isActive,
                                                 horizontalPadding = contentHorizontalPadding,
                                                 heroTrailerSourceUrl = heroTrailerSourceUrl,
@@ -2393,6 +2394,7 @@ private fun ConfiguredMetaSections(
                 DetailMetaInfo(
                     meta = meta,
                     showOverallRatings = settings.showOverallRatings,
+                    showParentsGuide = settings.showParentsGuide,
                     isMdbListActive = isMdbListActive,
                     horizontalScrollPadding = horizontalScrollPadding,
                     onOpenExternalUrl = onOpenExternalUrl,

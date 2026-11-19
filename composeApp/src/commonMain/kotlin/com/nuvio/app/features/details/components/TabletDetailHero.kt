@@ -64,6 +64,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.formatRuntimeForDisplay
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.detail_logo_content_description
+import nuvio.composeapp.generated.resources.details_parents_guide
 import nuvio.composeapp.generated.resources.details_season_count
 import nuvio.composeapp.generated.resources.details_director
 import nuvio.composeapp.generated.resources.details_writer
@@ -273,6 +274,7 @@ fun TabletDetailHero(
     meta: MetaDetails,
     showOverview: Boolean,
     showOverallRatings: Boolean,
+    showParentsGuide: Boolean,
     isMdbListActive: Boolean,
     horizontalPadding: Dp,
     heroTrailerSourceUrl: String?,
@@ -286,6 +288,11 @@ fun TabletDetailHero(
     val colorScheme = MaterialTheme.colorScheme
     val space = NuvioTokens.Space
     val imdbRatingClick = rememberImdbRatingClick(meta = meta, onOpenExternalUrl = onOpenExternalUrl)
+    val parentsGuideClick = rememberImdbParentsGuideClick(
+        meta = meta,
+        onOpenExternalUrl = onOpenExternalUrl,
+        enabled = showParentsGuide,
+    )
     val linkedRatings = rememberLinkedExternalRatings(meta)
     val trailerAlpha by animateFloatAsState(
         targetValue = if (heroTrailerReady) 1f else 0f,
@@ -344,6 +351,7 @@ fun TabletDetailHero(
                     meta = meta,
                     showImdbRating = showOverallRatings && !isMdbListActive,
                     onImdbClick = imdbRatingClick,
+                    parentsGuideClick = parentsGuideClick,
                 )
                 AnimatedVisibility(
                     visible = isMdbListActive && meta.externalRatings.isNotEmpty(),
@@ -437,6 +445,7 @@ private fun TabletHeroMetaRow(
     meta: MetaDetails,
     showImdbRating: Boolean,
     onImdbClick: (() -> Unit)?,
+    parentsGuideClick: (() -> Unit)?,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val seasonCount = remember(meta.videos) {
@@ -474,6 +483,12 @@ private fun TabletHeroMetaRow(
         }
         meta.ageRating?.takeIf { it.isNotBlank() }?.let { rating ->
             DetailHeroMetaBadge(text = rating)
+        }
+        parentsGuideClick?.let { click ->
+            ImdbParentsGuideBadge(
+                contentDescription = stringResource(Res.string.details_parents_guide),
+                onClick = click,
+            )
         }
         if (validImdbRating != null) {
             Row(

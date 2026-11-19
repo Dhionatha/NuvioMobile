@@ -1000,6 +1000,8 @@
     <string name="settings_meta_none">None</string>
     <string name="settings_meta_overview">Overview</string>
     <string name="settings_meta_overview_description">Synopsis, ratings, genres, and core credits.</string>
+    <string name="settings_meta_parents_guide">IMDb Parents Guide</string>
+    <string name="settings_meta_parents_guide_description">Show a shortcut to the IMDb Parents Guide next to the age rating.</string>
     <string name="settings_meta_production">Production</string>
     <string name="settings_meta_production_description">Studios and networks.</string>
     <string name="settings_meta_section_appearance">APPEARANCE</string>
@@ -1949,6 +1951,7 @@
     <string name="details_movie_details">Movie Details</string>
     <string name="details_original_language">Original Language</string>
     <string name="details_origin_country">Origin Country</string>
+    <string name="details_parents_guide">Open IMDb Parents Guide</string>
     <string name="details_release_info">Release Info</string>
     <string name="details_runtime">Runtime</string>
     <string name="details_season_view_posters">Posters</string>
