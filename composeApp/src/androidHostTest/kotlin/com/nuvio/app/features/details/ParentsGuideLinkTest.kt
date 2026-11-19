@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioTheme
@@ -40,6 +41,7 @@ class ParentsGuideLinkTest {
             }
         }
 
+        compose.onNodeWithText("Parents Guide", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Open IMDb Parents Guide")
             .assertIsDisplayed()
             .performClick()
@@ -83,6 +85,7 @@ class ParentsGuideLinkTest {
         }
 
         compose.onNodeWithContentDescription("Open IMDb Parents Guide").assertDoesNotExist()
+        compose.onNodeWithText("Parents Guide", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
@@ -97,6 +100,7 @@ class ParentsGuideLinkTest {
         }
 
         compose.onNodeWithContentDescription("Open IMDb Parents Guide").assertDoesNotExist()
+        compose.onNodeWithText("Parents Guide", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
@@ -127,6 +131,7 @@ class ParentsGuideLinkTest {
             }
         }
 
+        compose.onNodeWithText("Parents Guide", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Open IMDb Parents Guide")
             .assertIsDisplayed()
             .performClick()

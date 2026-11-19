@@ -141,6 +141,7 @@ fun DetailMetaInfo(
                 }
                 parentsGuideClick?.let { click ->
                     ImdbParentsGuideBadge(
+                        label = stringResource(Res.string.details_parents_guide_button),
                         contentDescription = stringResource(Res.string.details_parents_guide),
                         onClick = click,
                     )

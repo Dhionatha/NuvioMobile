@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -65,6 +66,7 @@ import com.nuvio.app.features.details.formatRuntimeForDisplay
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.detail_logo_content_description
 import nuvio.composeapp.generated.resources.details_parents_guide
+import nuvio.composeapp.generated.resources.details_parents_guide_button
 import nuvio.composeapp.generated.resources.details_season_count
 import nuvio.composeapp.generated.resources.details_director
 import nuvio.composeapp.generated.resources.details_writer
@@ -469,9 +471,10 @@ private fun TabletHeroMetaRow(
         letterSpacing = NuvioTokens.LetterSpacing.none,
     )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s16),
+        verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         metaItems.forEach { item ->
             Text(
@@ -486,6 +489,7 @@ private fun TabletHeroMetaRow(
         }
         parentsGuideClick?.let { click ->
             ImdbParentsGuideBadge(
+                label = stringResource(Res.string.details_parents_guide_button),
                 contentDescription = stringResource(Res.string.details_parents_guide),
                 onClick = click,
             )
