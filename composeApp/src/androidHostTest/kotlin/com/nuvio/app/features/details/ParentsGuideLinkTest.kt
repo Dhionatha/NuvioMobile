@@ -157,4 +157,14 @@ class ParentsGuideLinkTest {
         assertNull(MetaDetails(id = "tmdb:550", type = "movie", name = "Movie").imdbParentsGuideUrl())
         assertNull(MetaDetails(id = "mal:123", type = "series", name = "Anime").imdbParentsGuideUrl())
     }
+
+    @Test
+    fun resolvedEpisodeTitleIdBuildsTheParentsGuideUrl() {
+        assertEquals(
+            "https://www.imdb.com/title/tt0959621/parentalguide/",
+            imdbParentsGuideUrl("tt0959621"),
+        )
+        assertNull(imdbParentsGuideUrl("nm1234567"))
+        assertNull(imdbParentsGuideUrl(""))
+    }
 }

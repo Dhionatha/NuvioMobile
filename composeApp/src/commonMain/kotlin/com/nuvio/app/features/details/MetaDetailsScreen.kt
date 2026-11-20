@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.filled.Add
@@ -144,6 +145,8 @@ import com.nuvio.app.features.shuffle.shufflePrimaryAction
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.streams.rememberPlaybackAvailability
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
+import com.nuvio.app.features.tmdb.EpisodeGuideResolution
+import com.nuvio.app.features.tmdb.TmdbConfig
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.trakt.TraktAuthRepository
@@ -273,6 +276,55 @@ fun MetaDetailsScreen(
     var commentsError by remember(type, id) { mutableStateOf<String?>(null) }
     var selectedComment by remember(type, id) { mutableStateOf<TraktCommentReview?>(null) }
     val detailsScope = rememberCoroutineScope()
+    val urlOpener = rememberExternalUrlOpener()
+    val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
+    val openExternalUrl: (String) -> Unit = remember(urlOpener, failedOpenBrowserText) { { url ->
+        if (!urlOpener.open(url)) {
+            NuvioToastController.show(failedOpenBrowserText)
+        }
+    } }
+    val parentsGuideUnavailableText = stringResource(Res.string.details_parents_guide_unavailable)
+    val episodeParentsGuideEnabled = metaScreenSettingsUiState.showParentsGuide &&
+        tmdbSettingsUiState.apiKey.ifBlank { TmdbConfig.API_KEY }.isNotBlank()
+    var episodeGuideUnavailableKeys by remember(type, id) { mutableStateOf<Set<String>>(emptySet()) }
+    val openEpisodeParentsGuide: (MetaDetails, MetaVideo) -> Unit = { guideMeta, episode ->
+        val season = episode.season
+        val episodeNumber = episode.episode
+        if (season != null && episodeNumber != null) {
+            detailsScope.launch {
+                when (
+                    val resolution = TmdbService.resolveEpisodeImdbId(
+                        seriesVideoId = guideMeta.id,
+                        mediaType = guideMeta.type,
+                        fallbackImdbId = guideMeta.imdbId,
+                        seasonNumber = season,
+                        episodeNumber = episodeNumber,
+                        expectedTitle = episode.title,
+                        expectedAirDate = episode.released,
+                        language = tmdbSettingsUiState.language,
+                    )
+                ) {
+                    is EpisodeGuideResolution.Available ->
+                        imdbParentsGuideUrl(resolution.imdbId)?.let(openExternalUrl)
+
+                    EpisodeGuideResolution.Unavailable -> {
+                        episodeGuideUnavailableKeys =
+                            episodeGuideUnavailableKeys + episodeGuideKey(season, episodeNumber)
+                        NuvioToastController.show(parentsGuideUnavailableText)
+                    }
+
+                    EpisodeGuideResolution.Failed ->
+                        NuvioToastController.show(parentsGuideUnavailableText)
+                }
+            }
+        }
+    }
+    fun canOpenEpisodeParentsGuide(episode: MetaVideo): Boolean {
+        val season = episode.season ?: return false
+        val episodeNumber = episode.episode ?: return false
+        return episodeParentsGuideEnabled &&
+            episodeGuideKey(season, episodeNumber) !in episodeGuideUnavailableKeys
+    }
     var showLibraryListPicker by remember(type, id) { mutableStateOf(false) }
     var pickerTabs by remember(type, id) { mutableStateOf<List<TrackingLibraryTab>>(emptyList()) }
     var pickerMembership by remember(type, id) { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
@@ -730,15 +782,6 @@ fun MetaDetailsScreen(
                     meta.trailers.isNotEmpty()
                 }
                 val uriHandler = LocalUriHandler.current
-                val urlOpener = rememberExternalUrlOpener()
-                val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
-                val openExternalUrl: (String) -> Unit = remember(urlOpener, failedOpenBrowserText) {
-                    { url ->
-                        if (!urlOpener.open(url)) {
-                            NuvioToastController.show(failedOpenBrowserText)
-                        }
-                    }
-                }
                 val inAppTrailerPlaybackEnabled = AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
                 val trailerScope = rememberCoroutineScope()
                 var selectedTrailer by remember(meta.id) { mutableStateOf<MetaTrailer?>(null) }
@@ -1462,6 +1505,11 @@ fun MetaDetailsScreen(
                                 onPlayManually = {
                                     onEpisodeManualPlayClick(selectedEpisode)
                                 },
+                                onOpenParentsGuide = if (canOpenEpisodeParentsGuide(selectedEpisode)) {
+                                    { openEpisodeParentsGuide(meta, selectedEpisode) }
+                                } else {
+                                    null
+                                },
                                 ratingMedia = remember(meta, selectedEpisode) { meta.ratingReference(selectedEpisode) },
                             )
                         }
@@ -1791,6 +1839,15 @@ fun MetaDetailsScreen(
                             ),
                         )
                     }
+                    if (canOpenEpisodeParentsGuide(selectedEpisode)) {
+                        add(
+                            PosterZoomOverlayAction(
+                                icon = Icons.Rounded.FamilyRestroom,
+                                label = stringResource(Res.string.details_parents_guide_button),
+                                onSelected = { openEpisodeParentsGuide(meta, selectedEpisode) },
+                            ),
+                        )
+                    }
                     if (
                         onPlayManually != null &&
                         StreamAutoPlayPolicy.isEffectivelyEnabled(playerSettingsUiState) &&
@@ -1853,6 +1910,9 @@ fun MetaDetailsScreen(
         }
     }
 }
+
+private fun episodeGuideKey(seasonNumber: Int, episodeNumber: Int): String =
+    "$seasonNumber:$episodeNumber"
 
 private fun MetaDetails.isSeriesLikeForEpisodeRatings(): Boolean {
     val normalizedType = type.trim().lowercase()
