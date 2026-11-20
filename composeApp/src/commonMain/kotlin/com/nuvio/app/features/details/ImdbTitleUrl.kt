@@ -19,7 +19,13 @@ internal fun MetaDetails.imdbTitleUrl(): String? =
  * instead of opening a broken page.
  */
 internal fun MetaDetails.imdbParentsGuideUrl(): String? =
-    imdbTitleId()?.let { titleId -> "https://www.imdb.com/title/$titleId/parentalguide/" }
+    imdbTitleId()?.let(::imdbParentsGuideUrl)
+
+/** IMDb Parents Guide URL for a resolved IMDb title id, or `null` when [tconst] is not one. */
+internal fun imdbParentsGuideUrl(tconst: String): String? =
+    ImdbTitleIdPattern.find(tconst)?.value?.let { titleId ->
+        "https://www.imdb.com/title/$titleId/parentalguide/"
+    }
 
 private fun MetaDetails.imdbTitleId(): String? =
     sequenceOf(imdbId, id)

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCheckCircle
+import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +67,7 @@ fun EpisodeWatchedActionSheet(
     onToggleSeasonWatched: () -> Unit,
     showPlayManually: Boolean = false,
     onPlayManually: (() -> Unit)? = null,
+    onOpenParentsGuide: (() -> Unit)? = null,
     ratingMedia: TrackingMediaReference? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -167,6 +169,16 @@ fun EpisodeWatchedActionSheet(
                                     }
                                 } else {
                                     null
+                                },
+                            )
+                        }
+                        if (onOpenParentsGuide != null) {
+                            NuvioBottomSheetActionRow(
+                                icon = Icons.Rounded.FamilyRestroom,
+                                title = stringResource(Res.string.details_parents_guide_button),
+                                onClick = {
+                                    onOpenParentsGuide()
+                                    dismiss()
                                 },
                             )
                         }

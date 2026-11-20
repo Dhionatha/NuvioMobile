@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +37,7 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.cw_action_go_to_details
 import nuvio.composeapp.generated.resources.cw_action_remove
 import nuvio.composeapp.generated.resources.cw_action_start_from_beginning
+import nuvio.composeapp.generated.resources.details_parents_guide_button
 import nuvio.composeapp.generated.resources.hero_mark_watched
 import nuvio.composeapp.generated.resources.play_manually
 import org.jetbrains.compose.resources.stringResource
@@ -49,6 +51,7 @@ fun NuvioContinueWatchingActionSheet(
     onDismiss: () -> Unit,
     onOpenDetails: () -> Unit,
     onStartFromBeginning: (() -> Unit)? = null,
+    onOpenParentsGuide: (() -> Unit)? = null,
     onPlayManually: (() -> Unit)? = null,
     onMarkWatched: (() -> Unit)? = null,
     onRemove: () -> Unit,
@@ -85,6 +88,13 @@ fun NuvioContinueWatchingActionSheet(
                     icon = Icons.Default.Info,
                     title = stringResource(Res.string.cw_action_go_to_details),
                     onClick = { dismissAfter(onOpenDetails) },
+                )
+            }
+            if (onOpenParentsGuide != null) {
+                NuvioBottomSheetActionRow(
+                    icon = Icons.Rounded.FamilyRestroom,
+                    title = stringResource(Res.string.details_parents_guide_button),
+                    onClick = { dismissAfter(onOpenParentsGuide) },
                 )
             }
             if (showManualPlayOption && onPlayManually != null) {

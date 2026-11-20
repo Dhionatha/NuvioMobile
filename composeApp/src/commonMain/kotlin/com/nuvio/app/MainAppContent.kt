@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -104,6 +105,7 @@ import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.collection.CollectionSyncService
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
+import com.nuvio.app.features.details.imdbParentsGuideUrl
 import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadSubtitles
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -164,6 +166,10 @@ import com.nuvio.app.features.streams.PlaybackAvailability
 import com.nuvio.app.features.streams.rememberPlaybackAvailability
 import com.nuvio.app.features.streams.StreamLaunchStore
 import com.nuvio.app.features.streams.StreamsRepository
+import com.nuvio.app.features.tmdb.EpisodeGuideResolution
+import com.nuvio.app.features.tmdb.TmdbConfig
+import com.nuvio.app.features.tmdb.TmdbService
+import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tracking.TrackingLibraryTab
 import com.nuvio.app.features.tracking.TrackingMembershipApplyResult
 import com.nuvio.app.features.tracking.TrackingProviderId
@@ -222,6 +228,16 @@ internal fun MainAppContent(
             MetaScreenSettingsRepository.ensureLoaded()
             MetaScreenSettingsRepository.uiState
         }.collectMappedAsState { it.posterTransitionEnabled }
+        val showParentsGuide by remember {
+            MetaScreenSettingsRepository.ensureLoaded()
+            MetaScreenSettingsRepository.uiState
+        }.collectMappedAsState { it.showParentsGuide }
+        val tmdbApiKey by remember {
+            TmdbSettingsRepository.ensureLoaded()
+            TmdbSettingsRepository.uiState
+        }.collectMappedAsState { settings -> settings.apiKey.ifBlank { TmdbConfig.API_KEY } }
+        val episodeParentsGuideEnabled = showParentsGuide && tmdbApiKey.isNotBlank()
+        val parentsGuideUnavailableText = stringResource(Res.string.details_parents_guide_unavailable)
         val posterNavigationEnabled = supportsPosterNavigationMotion &&
             posterTransitionEnabled && onNavigate == null
         val routeDisposalDecorator = remember {
@@ -285,6 +301,7 @@ internal fun MainAppContent(
         val posterOverlayHazeState = rememberHazeState()
         var selectedContinueWatchingForActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
         var selectedContinueWatchingZoomAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
+        var episodeGuideUnavailableKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
         val libraryDisintegrationRequests = remember { DisintegrationRequestController<String>() }
         val continueWatchingDisintegrationRequests = remember { DisintegrationRequestController<String>() }
         var requestedSettingsPageName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -892,6 +909,44 @@ internal fun MainAppContent(
                 NuvioToastController.show(failedOpenBrowserText)
             }
             return opened
+        }
+
+        fun canOpenContinueWatchingParentsGuide(item: ContinueWatchingItem): Boolean {
+            val season = item.seasonNumber ?: return false
+            val episode = item.episodeNumber ?: return false
+            return episodeParentsGuideEnabled &&
+                continueWatchingParentsGuideKey(item, season, episode) !in episodeGuideUnavailableKeys
+        }
+
+        fun openContinueWatchingParentsGuide(item: ContinueWatchingItem) {
+            val season = item.seasonNumber ?: return
+            val episode = item.episodeNumber ?: return
+            coroutineScope.launch {
+                when (
+                    val resolution = TmdbService.resolveEpisodeImdbId(
+                        seriesVideoId = item.parentMetaId,
+                        mediaType = item.parentMetaType,
+                        fallbackImdbId = null,
+                        seasonNumber = season,
+                        episodeNumber = episode,
+                        expectedTitle = item.episodeTitle,
+                        expectedAirDate = item.released,
+                        language = TmdbSettingsRepository.snapshot().language,
+                    )
+                ) {
+                    is EpisodeGuideResolution.Available ->
+                        imdbParentsGuideUrl(resolution.imdbId)?.let { openExternalStreamUrl(it) }
+
+                    EpisodeGuideResolution.Unavailable -> {
+                        episodeGuideUnavailableKeys =
+                            episodeGuideUnavailableKeys + continueWatchingParentsGuideKey(item, season, episode)
+                        NuvioToastController.show(parentsGuideUnavailableText)
+                    }
+
+                    EpisodeGuideResolution.Failed ->
+                        NuvioToastController.show(parentsGuideUnavailableText)
+                }
+            }
         }
 
         suspend fun launchCloudLibraryFile(
@@ -1936,6 +1991,15 @@ internal fun MainAppContent(
                                         ),
                                     )
                                 }
+                                if (canOpenContinueWatchingParentsGuide(item)) {
+                                    add(
+                                        PosterZoomOverlayAction(
+                                            icon = Icons.Rounded.FamilyRestroom,
+                                            label = stringResource(Res.string.details_parents_guide_button),
+                                            onSelected = { openContinueWatchingParentsGuide(item) },
+                                        ),
+                                    )
+                                }
                                 if (showManualPlayOption) {
                                     add(
                                         PosterZoomOverlayAction(
@@ -2002,6 +2066,9 @@ internal fun MainAppContent(
                 onStartFromBeginning = selectedContinueWatchingForActions
                     ?.takeIf { !it.isNextUp && canPlayContinueWatching(it) }
                     ?.let { item -> { onContinueWatchingStartFromBeginning(item) } },
+                onOpenParentsGuide = selectedContinueWatchingForActions
+                    ?.takeIf(::canOpenContinueWatchingParentsGuide)
+                    ?.let { item -> { openContinueWatchingParentsGuide(item) } },
                 onPlayManually = selectedContinueWatchingForActions
                     ?.let { item -> { onContinueWatchingPlayManually(item) } },
                 onMarkWatched = selectedContinueWatchingForActions
@@ -2144,6 +2211,12 @@ internal fun MainAppContent(
             }
         }
 }
+
+private fun continueWatchingParentsGuideKey(
+    item: ContinueWatchingItem,
+    seasonNumber: Int,
+    episodeNumber: Int,
+): String = "${item.parentMetaId}:$seasonNumber:$episodeNumber"
 
 private fun AppRoute?.drawsUnderVerticalBar(selectedTab: AppScreenTab): Boolean =
     when (this) {
