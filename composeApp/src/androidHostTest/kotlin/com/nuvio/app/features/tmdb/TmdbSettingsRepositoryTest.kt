@@ -125,4 +125,25 @@ class TmdbSettingsRepositoryTest {
 
         assertEquals("local-key", TmdbSettingsRepository.effectiveApiKey())
     }
+
+    @Test
+    fun watchProvidersModuleDefaultsToEnabledAndRoundTripsThroughSync() {
+        assertTrue(TmdbSettingsRepository.snapshot().useWatchProviders)
+
+        TmdbSettingsRepository.setUseWatchProviders(false)
+        TmdbSettingsRepository.onProfileChanged()
+
+        assertFalse(TmdbSettingsRepository.snapshot().useWatchProviders)
+        assertEquals(
+            encodeSyncBoolean(false),
+            TmdbSettingsStorage.exportToSyncPayload()["tmdb_use_watch_providers"],
+        )
+
+        TmdbSettingsStorage.replaceFromSyncPayload(buildJsonObject {
+            put("tmdb_use_watch_providers", encodeSyncBoolean(true))
+        })
+        TmdbSettingsRepository.onProfileChanged()
+
+        assertTrue(TmdbSettingsRepository.snapshot().useWatchProviders)
+    }
 }

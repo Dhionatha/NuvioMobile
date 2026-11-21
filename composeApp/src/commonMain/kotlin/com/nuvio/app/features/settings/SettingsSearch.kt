@@ -841,6 +841,7 @@ internal fun settingsSearchEntries(
     val detailSectionsSection = stringResource(Res.string.settings_meta_section_sections)
     listOf(
         PlaybackSearchRow("meta-overview", stringResource(Res.string.settings_meta_overview), stringResource(Res.string.settings_meta_overview_description)),
+        PlaybackSearchRow("meta-where-to-watch", stringResource(Res.string.settings_meta_where_to_watch), stringResource(Res.string.settings_meta_where_to_watch_description)),
         PlaybackSearchRow("meta-actions", stringResource(Res.string.settings_meta_actions), stringResource(Res.string.settings_meta_actions_description)),
         PlaybackSearchRow("meta-details", stringResource(Res.string.settings_meta_details), stringResource(Res.string.settings_meta_details_description)),
         PlaybackSearchRow("meta-trailers", stringResource(Res.string.settings_meta_trailers), stringResource(Res.string.settings_meta_trailers_description)),
@@ -889,6 +890,7 @@ internal fun settingsSearchEntries(
         PlaybackSearchRow("tmdb-season-posters", stringResource(Res.string.settings_tmdb_module_season_posters), stringResource(Res.string.settings_tmdb_module_season_posters_description), tmdbModulesSection),
         PlaybackSearchRow("tmdb-more-like-this", stringResource(Res.string.settings_tmdb_module_more_like_this), stringResource(Res.string.settings_tmdb_module_more_like_this_description), tmdbModulesSection),
         PlaybackSearchRow("tmdb-collections", stringResource(Res.string.settings_tmdb_module_collections), stringResource(Res.string.settings_tmdb_module_collections_description), tmdbModulesSection),
+        PlaybackSearchRow("tmdb-watch-providers", stringResource(Res.string.settings_tmdb_module_watch_providers), stringResource(Res.string.settings_tmdb_module_watch_providers_description), tmdbModulesSection),
     ).forEach { row ->
         addRow(
             page = SettingsPage.TmdbEnrichment,

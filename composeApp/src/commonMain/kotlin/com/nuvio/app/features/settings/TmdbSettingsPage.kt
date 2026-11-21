@@ -51,6 +51,8 @@ import nuvio.composeapp.generated.resources.settings_tmdb_module_season_posters
 import nuvio.composeapp.generated.resources.settings_tmdb_module_season_posters_description
 import nuvio.composeapp.generated.resources.settings_tmdb_module_trailers
 import nuvio.composeapp.generated.resources.settings_tmdb_module_trailers_description
+import nuvio.composeapp.generated.resources.settings_tmdb_module_watch_providers
+import nuvio.composeapp.generated.resources.settings_tmdb_module_watch_providers_description
 import nuvio.composeapp.generated.resources.settings_tmdb_personal_api_key
 import nuvio.composeapp.generated.resources.settings_tmdb_preferred_language
 import nuvio.composeapp.generated.resources.settings_tmdb_preferred_language_description
@@ -207,6 +209,15 @@ internal fun LazyListScope.tmdbSettingsContent(
                     checked = settings.useCollections,
                     enabled = enrichmentControlsEnabled,
                     onCheckedChange = TmdbSettingsRepository::setUseCollections,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                TmdbToggleRow(
+                    isTablet = isTablet,
+                    title = stringResource(Res.string.settings_tmdb_module_watch_providers),
+                    description = stringResource(Res.string.settings_tmdb_module_watch_providers_description),
+                    checked = settings.useWatchProviders,
+                    enabled = enrichmentControlsEnabled,
+                    onCheckedChange = TmdbSettingsRepository::setUseWatchProviders,
                 )
             }
         }

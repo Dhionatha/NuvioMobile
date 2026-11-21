@@ -7,8 +7,10 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaPerson
 import com.nuvio.app.features.details.MetaTrailer
 import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.details.MetaWatchProvider
 import com.nuvio.app.features.details.MoreLikeThisSource
 import com.nuvio.app.features.details.PersonDetail
+import com.nuvio.app.features.details.WatchProviderAccessType
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -796,6 +798,8 @@ object TmdbMetadataService {
             collectionName = enrichment.collectionName,
             collectionItems = enrichment.collectionItems,
             trailers = enrichment.trailers,
+            watchProviders = enrichment.watchProviders,
+            watchProvidersLink = enrichment.watchProvidersLink,
         )
 
     internal fun applyEnrichment(
@@ -920,6 +924,13 @@ object TmdbMetadataService {
             updated = updated.copy(trailers = enrichment.trailers)
         }
 
+        if (enrichment != null && settings.useWatchProviders) {
+            updated = updated.copy(
+                watchProviders = enrichment.watchProviders,
+                watchProvidersLink = enrichment.watchProvidersLink,
+            )
+        }
+
         return updated
     }
 
@@ -930,7 +941,7 @@ object TmdbMetadataService {
         settings: TmdbSettings,
     ): TmdbEnrichment? = withContext(Dispatchers.Default) {
         val normalizedLanguage = normalizeTmdbLanguage(language)
-        val cacheKey = "$tmdbId:$mediaType:$normalizedLanguage"
+        val cacheKey = "$tmdbId:$mediaType:$normalizedLanguage:watchProviders=${settings.useWatchProviders}"
         synchronized(enrichmentCacheLock) { enrichmentCache[cacheKey] }?.let { return@withContext it }
 
         val numericId = tmdbId.toIntOrNull() ?: return@withContext null
@@ -994,6 +1005,17 @@ object TmdbMetadataService {
                     emptyList()
                 }
             }
+            val watchProviders = async {
+                if (settings.useWatchProviders && (mediaType == "movie" || mediaType == "tv")) {
+                    fetchWatchProviders(
+                        tmdbId = numericId,
+                        mediaType = mediaType,
+                        normalizedLanguage = normalizedLanguage,
+                    )
+                } else {
+                    null
+                }
+            }
             Quadruple(
                 first = details.await(),
                 second = credits.await(),
@@ -1002,6 +1024,7 @@ object TmdbMetadataService {
                     ageRating = ageRating.await(),
                     moreLikeThis = moreLikeThis.await(),
                     trailers = trailers.await(),
+                    watchProviders = watchProviders.await(),
                 ),
             )
         }
@@ -1078,6 +1101,8 @@ object TmdbMetadataService {
             },
             moreLikeThis = response.fourth.moreLikeThis,
             trailers = response.fourth.trailers,
+            watchProviders = response.fourth.watchProviders?.first.orEmpty(),
+            watchProvidersLink = response.fourth.watchProviders?.second,
         )
 
         if (!enrichment.hasContent()) return@withContext null
@@ -1410,6 +1435,20 @@ object TmdbMetadataService {
         )
         return response?.results.orEmpty()
     }
+
+    private suspend fun fetchWatchProviders(
+        tmdbId: Int,
+        mediaType: String,
+        normalizedLanguage: String,
+    ): Pair<List<MetaWatchProvider>, String?> {
+        val region = preferredWatchProviderRegion(normalizedLanguage)
+        val response = fetch<TmdbWatchProvidersResponse>(
+            endpoint = "$mediaType/$tmdbId/watch/providers",
+            query = mapOf("watch_region" to region),
+        ) ?: return emptyList<MetaWatchProvider>() to null
+        val regional = response.results?.get(region) ?: return emptyList<MetaWatchProvider>() to null
+        return buildWatchProviders(regional) to regional.link?.trim()?.takeIf(String::isNotBlank)
+    }
 }
 
 internal data class TmdbEnrichment(
@@ -1437,6 +1476,8 @@ internal data class TmdbEnrichment(
     val collectionItems: List<MetaPreview> = emptyList(),
     val moreLikeThis: List<MetaPreview> = emptyList(),
     val trailers: List<MetaTrailer> = emptyList(),
+    val watchProviders: List<MetaWatchProvider> = emptyList(),
+    val watchProvidersLink: String? = null,
 ) {
     fun hasContent(): Boolean =
         localizedTitle != null ||
@@ -1460,13 +1501,15 @@ internal data class TmdbEnrichment(
             networks.isNotEmpty() ||
             collectionItems.isNotEmpty() ||
             moreLikeThis.isNotEmpty() ||
-            trailers.isNotEmpty()
+            trailers.isNotEmpty() ||
+            watchProviders.isNotEmpty()
 }
 
 private data class EnrichmentPayload(
     val ageRating: String?,
     val moreLikeThis: List<MetaPreview>,
     val trailers: List<MetaTrailer>,
+    val watchProviders: Pair<List<MetaWatchProvider>, String?>? = null,
 )
 
 internal data class TmdbEpisodeEnrichment(
@@ -1897,6 +1940,84 @@ private fun TmdbVideoResult.toMetaTrailer(
         displayName = displayName,
         iso6391 = iso6391?.trim()?.takeIf { it.isNotBlank() },
     )
+}
+
+@Serializable
+internal data class TmdbWatchProvidersResponse(
+    val id: Int? = null,
+    val results: Map<String, TmdbWatchProviderRegion>? = null,
+)
+
+@Serializable
+internal data class TmdbWatchProviderRegion(
+    val link: String? = null,
+    val flatrate: List<TmdbWatchProviderEntry>? = null,
+    val rent: List<TmdbWatchProviderEntry>? = null,
+    val buy: List<TmdbWatchProviderEntry>? = null,
+    val ads: List<TmdbWatchProviderEntry>? = null,
+    val free: List<TmdbWatchProviderEntry>? = null,
+)
+
+@Serializable
+internal data class TmdbWatchProviderEntry(
+    @SerialName("provider_id") val providerId: Int? = null,
+    @SerialName("provider_name") val providerName: String? = null,
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("display_priority") val displayPriority: Int? = null,
+)
+
+private class WatchProviderAccumulator(
+    val id: Int,
+    val name: String,
+    var logo: String?,
+) {
+    val accessTypes = mutableListOf<WatchProviderAccessType>()
+    var priority: Int = Int.MAX_VALUE
+}
+
+/**
+ * Merges the TMDB offer buckets into one entry per provider.
+ * Used by tests, hence internal.
+ */
+internal fun buildWatchProviders(region: TmdbWatchProviderRegion): List<MetaWatchProvider> {
+    val buckets = listOf(
+        WatchProviderAccessType.SUBSCRIPTION to region.flatrate,
+        WatchProviderAccessType.FREE to region.free,
+        WatchProviderAccessType.ADS to region.ads,
+        WatchProviderAccessType.RENT to region.rent,
+        WatchProviderAccessType.BUY to region.buy,
+    )
+    val merged = linkedMapOf<Int, WatchProviderAccumulator>()
+    buckets.forEach { (accessType, entries) ->
+        entries.orEmpty().forEach { entry ->
+            val providerId = entry.providerId
+            val name = entry.providerName?.trim()?.takeIf(String::isNotBlank)
+            if (providerId != null && name != null) {
+                val accumulator = merged.getOrPut(providerId) {
+                    WatchProviderAccumulator(
+                        id = providerId,
+                        name = name,
+                        logo = buildImageUrl(entry.logoPath, "w185"),
+                    )
+                }
+                if (accessType !in accumulator.accessTypes) accumulator.accessTypes.add(accessType)
+                if (accumulator.logo == null) accumulator.logo = buildImageUrl(entry.logoPath, "w185")
+                if (entry.displayPriority != null) {
+                    accumulator.priority = minOf(accumulator.priority, entry.displayPriority)
+                }
+            }
+        }
+    }
+    return merged.values
+        .sortedWith(compareBy<WatchProviderAccumulator> { it.priority }.thenBy { it.name.lowercase() })
+        .map { accumulator ->
+            MetaWatchProvider(
+                id = accumulator.id,
+                name = accumulator.name,
+                logo = accumulator.logo,
+                accessTypes = accumulator.accessTypes.toList(),
+            )
+        }
 }
 
 @Serializable

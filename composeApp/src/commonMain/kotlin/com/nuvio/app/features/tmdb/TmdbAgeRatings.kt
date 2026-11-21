@@ -21,3 +21,7 @@ internal fun preferredAgeRatingRegions(normalizedLanguage: String): List<String>
         add("GB")
     }.distinct()
 }
+
+/** Single ISO-3166-1 region used for watch providers, derived from the TMDB language. */
+internal fun preferredWatchProviderRegion(normalizedLanguage: String): String =
+    preferredAgeRatingRegions(normalizedLanguage).first()
