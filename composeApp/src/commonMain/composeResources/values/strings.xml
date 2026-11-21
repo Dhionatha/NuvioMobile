@@ -590,6 +590,8 @@
     <string name="settings_licenses_attributions_nuvio_license">Licensed under the GNU General Public License v3.0.</string>
     <string name="settings_licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
     <string name="settings_licenses_attributions_tmdb_body">Nuvio uses the TMDB API for movie and TV metadata, artwork, trailers, cast, production details, collections, and recommendations. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="settings_licenses_attributions_justwatch_title">JustWatch</string>
+    <string name="settings_licenses_attributions_justwatch_body">Streaming availability data is provided by JustWatch through the TMDB API. Nuvio does not host, index, or distribute streaming content. Learn more at https://www.justwatch.com.</string>
     <string name="settings_licenses_attributions_imdb_title">IMDb Non-Commercial Datasets</string>
     <string name="settings_licenses_attributions_imdb_body">Nuvio uses IMDb Non-Commercial Datasets, including title.ratings.tsv.gz, for IMDb ratings and vote counts. Information courtesy of IMDb (https://www.imdb.com). Used with permission. IMDb data is for personal and non-commercial use under IMDb&apos;s terms.</string>
     <string name="settings_licenses_attributions_trakt_title">Trakt</string>
@@ -631,6 +633,13 @@
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Trailers</string>
+    <string name="detail_watch_provider_ads">With ads</string>
+    <string name="detail_watch_provider_buy">Buy</string>
+    <string name="detail_watch_provider_free">Free</string>
+    <string name="detail_watch_provider_rent">Rent</string>
+    <string name="detail_watch_provider_subscription">Subscription</string>
+    <string name="detail_watch_providers_attribution">Streaming availability provided by JustWatch</string>
+    <string name="detail_watch_providers_title">Where to Watch</string>
     <string name="downloads_empty_episodes">No completed episodes</string>
     <string name="downloads_empty_title">No downloads yet</string>
     <string name="downloads_episode_count">%1$d downloaded episode(s)</string>
@@ -1011,6 +1020,8 @@
     <string name="settings_meta_tab_layout_description">Group sections into tabs like the TV app. Assign up to 3 sections per tab group.</string>
     <string name="settings_meta_trailers">Trailers</string>
     <string name="settings_meta_trailers_description">Trailer rail and playback shortcuts.</string>
+    <string name="settings_meta_where_to_watch">Where to Watch</string>
+    <string name="settings_meta_where_to_watch_description">Streaming services available in your region.</string>
     <string name="settings_notifications_disabled_in_app">Notifications are currently disabled in Nuvio.</string>
     <string name="settings_notifications_episode_release_alerts">Episode release alerts</string>
     <string name="settings_notifications_episode_release_alerts_description">Schedule local notifications when a new episode for a saved show becomes available.</string>
@@ -1325,6 +1336,8 @@
     <string name="settings_tmdb_module_season_posters_description">Use TMDB season posters in the metadata screen season selector for series.</string>
     <string name="settings_tmdb_module_trailers">Trailers</string>
     <string name="settings_tmdb_module_trailers_description">Trailer candidates from TMDB videos for the detail trailer section</string>
+    <string name="settings_tmdb_module_watch_providers">Where to Watch</string>
+    <string name="settings_tmdb_module_watch_providers_description">Streaming availability by region from TMDB, powered by JustWatch</string>
     <string name="settings_tmdb_preferred_language">Language</string>
     <string name="settings_tmdb_preferred_language_description">TMDB metadata language for title, logo, and enabled fields</string>
     <string name="settings_tmdb_section_localization">LOCALIZATION</string>
@@ -1647,6 +1660,8 @@
     <string name="meta_section_production_description">Studios and networks.</string>
     <string name="meta_section_production_title">Production</string>
     <string name="meta_section_trailers_description">Trailer rail and playback shortcuts.</string>
+    <string name="meta_section_where_to_watch_description">Streaming services available in your region.</string>
+    <string name="meta_section_where_to_watch_title">Where to Watch</string>
     <string name="network_back_online">Back online</string>
     <string name="network_cannot_reach_servers">Cannot reach servers</string>
     <string name="network_error_empty_response_body">Empty response body</string>

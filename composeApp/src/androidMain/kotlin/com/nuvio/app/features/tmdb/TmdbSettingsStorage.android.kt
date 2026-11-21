@@ -27,6 +27,7 @@ actual object TmdbSettingsStorage {
     private const val useSeasonPostersKey = "tmdb_use_season_posters"
     private const val useMoreLikeThisKey = "tmdb_use_more_like_this"
     private const val useCollectionsKey = "tmdb_use_collections"
+    private const val useWatchProvidersKey = "tmdb_use_watch_providers"
     private val syncKeys = listOf(
         enabledKey,
         languageKey,
@@ -41,6 +42,7 @@ actual object TmdbSettingsStorage {
         useSeasonPostersKey,
         useMoreLikeThisKey,
         useCollectionsKey,
+        useWatchProvidersKey,
     )
 
     private var preferences: SharedPreferences? = null
@@ -141,6 +143,12 @@ actual object TmdbSettingsStorage {
         saveBoolean(useCollectionsKey, enabled)
     }
 
+    actual fun loadUseWatchProviders(): Boolean? = loadBoolean(useWatchProvidersKey)
+
+    actual fun saveUseWatchProviders(enabled: Boolean) {
+        saveBoolean(useWatchProvidersKey, enabled)
+    }
+
     private fun loadBoolean(key: String): Boolean? =
         preferences?.let { sharedPreferences ->
             val scopedKey = ProfileScopedKey.of(key)
@@ -172,6 +180,7 @@ actual object TmdbSettingsStorage {
         loadUseSeasonPosters()?.let { put(useSeasonPostersKey, encodeSyncBoolean(it)) }
         loadUseMoreLikeThis()?.let { put(useMoreLikeThisKey, encodeSyncBoolean(it)) }
         loadUseCollections()?.let { put(useCollectionsKey, encodeSyncBoolean(it)) }
+        loadUseWatchProviders()?.let { put(useWatchProvidersKey, encodeSyncBoolean(it)) }
     }
 
     actual fun replaceFromSyncPayload(payload: JsonObject) {
@@ -192,5 +201,6 @@ actual object TmdbSettingsStorage {
         payload.decodeSyncBoolean(useSeasonPostersKey)?.let(::saveUseSeasonPosters)
         payload.decodeSyncBoolean(useMoreLikeThisKey)?.let(::saveUseMoreLikeThis)
         payload.decodeSyncBoolean(useCollectionsKey)?.let(::saveUseCollections)
+        payload.decodeSyncBoolean(useWatchProvidersKey)?.let(::saveUseWatchProviders)
     }
 }

@@ -118,6 +118,8 @@ import nuvio.composeapp.generated.resources.settings_meta_tab_layout
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout_description
 import nuvio.composeapp.generated.resources.settings_meta_trailers
 import nuvio.composeapp.generated.resources.settings_meta_trailers_description
+import nuvio.composeapp.generated.resources.settings_meta_where_to_watch
+import nuvio.composeapp.generated.resources.settings_meta_where_to_watch_description
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -560,6 +562,7 @@ private val MetaScreenSectionKey.titleRes: StringResource
     get() = when (this) {
         MetaScreenSectionKey.ACTIONS -> Res.string.settings_meta_actions
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview
+        MetaScreenSectionKey.WHERE_TO_WATCH -> Res.string.settings_meta_where_to_watch
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast
         MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments
@@ -574,6 +577,7 @@ private val MetaScreenSectionKey.descriptionRes: StringResource
     get() = when (this) {
         MetaScreenSectionKey.ACTIONS -> Res.string.settings_meta_actions_description
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview_description
+        MetaScreenSectionKey.WHERE_TO_WATCH -> Res.string.settings_meta_where_to_watch_description
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production_description
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast_description
         MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments_description

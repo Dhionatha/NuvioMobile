@@ -590,6 +590,8 @@
     <string name="settings_licenses_attributions_nuvio_license">Licenciado sob a GNU General Public License v3.0.</string>
     <string name="settings_licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
     <string name="settings_licenses_attributions_tmdb_body">O Nuvio usa a API do TMDB para metadados de filmes e séries, artes, trailers, elenco, detalhes de produção, coleções e recomendações. Este produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB.</string>
+    <string name="settings_licenses_attributions_justwatch_title">JustWatch</string>
+    <string name="settings_licenses_attributions_justwatch_body">Os dados de disponibilidade de streaming são fornecidos pelo JustWatch por meio da API do TMDB. O Nuvio não hospeda, indexa nem distribui conteúdo de streaming. Saiba mais em https://www.justwatch.com.</string>
     <string name="settings_licenses_attributions_imdb_title">Conjuntos de dados não comerciais do IMDb</string>
     <string name="settings_licenses_attributions_imdb_body">O Nuvio usa os Conjuntos de dados não comerciais do IMDb, incluindo title.ratings.tsv.gz, para classificações e contagem de votos do IMDb. Informações cortesia do IMDb (https://www.imdb.com). Usado com permissão. Dados do IMDb são para uso pessoal e não comercial sob os termos do IMDb.</string>
     <string name="settings_licenses_attributions_trakt_title">Trakt</string>
@@ -631,6 +633,13 @@
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Trailers</string>
+    <string name="detail_watch_provider_ads">Com anúncios</string>
+    <string name="detail_watch_provider_buy">Compra</string>
+    <string name="detail_watch_provider_free">Grátis</string>
+    <string name="detail_watch_provider_rent">Aluguel</string>
+    <string name="detail_watch_provider_subscription">Assinatura</string>
+    <string name="detail_watch_providers_attribution">Disponibilidade de streaming fornecida por JustWatch</string>
+    <string name="detail_watch_providers_title">Onde Assistir</string>
     <string name="downloads_empty_episodes">Nenhum episódio concluído</string>
     <string name="downloads_empty_title">Nenhum download ainda</string>
     <string name="downloads_episode_count">%1$d episódio(s) baixado(s)</string>
@@ -1003,6 +1012,8 @@
     <string name="settings_meta_tab_layout_description">Agrupe seções em abas como no app de TV. Atribua até 3 seções por grupo de abas.</string>
     <string name="settings_meta_trailers">Trailers</string>
     <string name="settings_meta_trailers_description">Rail de trailer e atalhos de reprodução.</string>
+    <string name="settings_meta_where_to_watch">Onde Assistir</string>
+    <string name="settings_meta_where_to_watch_description">Serviços de streaming disponíveis na sua região.</string>
     <string name="settings_notifications_disabled_in_app">Notificações estão atualmente desativadas no Nuvio.</string>
     <string name="settings_notifications_episode_release_alerts">Alertas de lançamento de episódios</string>
     <string name="settings_notifications_episode_release_alerts_description">Agende notificações locais quando um novo episódio de uma série salva se tornar disponível.</string>
@@ -1306,6 +1317,8 @@
     <string name="settings_tmdb_module_season_posters_description">Usar pôsteres de temporada do TMDB no seletor de temporadas da tela de metadados de séries.</string>
     <string name="settings_tmdb_module_trailers">Trailers</string>
     <string name="settings_tmdb_module_trailers_description">Candidatos a trailer dos vídeos do TMDB para a seção de trailer de detalhes</string>
+    <string name="settings_tmdb_module_watch_providers">Onde Assistir</string>
+    <string name="settings_tmdb_module_watch_providers_description">Disponibilidade de streaming por região do TMDB, via JustWatch</string>
     <string name="settings_tmdb_preferred_language">Idioma</string>
     <string name="settings_tmdb_preferred_language_description">Idioma dos metadados do TMDB para título, logo e campos ativados</string>
     <string name="settings_tmdb_section_localization">LOCALIZAÇÃO</string>
@@ -1627,6 +1640,8 @@
     <string name="meta_section_production_description">Estúdios e emissoras.</string>
     <string name="meta_section_production_title">Produção</string>
     <string name="meta_section_trailers_description">Rail de trailer e atalhos de reprodução.</string>
+    <string name="meta_section_where_to_watch_description">Serviços de streaming disponíveis na sua região.</string>
+    <string name="meta_section_where_to_watch_title">Onde Assistir</string>
     <string name="network_back_online">Online novamente</string>
     <string name="network_cannot_reach_servers">Não foi possível alcançar os servidores</string>
     <string name="network_error_empty_response_body">Corpo da resposta vazio</string>

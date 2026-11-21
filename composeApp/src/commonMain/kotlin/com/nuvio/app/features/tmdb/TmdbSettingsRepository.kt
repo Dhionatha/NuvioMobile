@@ -27,6 +27,7 @@ object TmdbSettingsRepository {
     private var useSeasonPosters = true
     private var useMoreLikeThis = true
     private var useCollections = true
+    private var useWatchProviders = true
 
     fun ensureLoaded() {
         if (hasLoaded) return
@@ -148,6 +149,13 @@ object TmdbSettingsRepository {
         persist = TmdbSettingsStorage::saveUseCollections,
     )
 
+    fun setUseWatchProviders(value: Boolean) = setBoolean(
+        current = useWatchProviders,
+        next = value,
+        update = { useWatchProviders = it },
+        persist = TmdbSettingsStorage::saveUseWatchProviders,
+    )
+
     private fun setBoolean(
         current: Boolean,
         next: Boolean,
@@ -180,6 +188,7 @@ object TmdbSettingsRepository {
         useSeasonPosters = TmdbSettingsStorage.loadUseSeasonPosters() ?: true
         useMoreLikeThis = TmdbSettingsStorage.loadUseMoreLikeThis() ?: true
         useCollections = TmdbSettingsStorage.loadUseCollections() ?: true
+        useWatchProviders = TmdbSettingsStorage.loadUseWatchProviders() ?: true
         publish()
         if (wasLoaded && previousApiKey != apiKey) {
             invalidateMetadata()
@@ -202,6 +211,7 @@ object TmdbSettingsRepository {
             useSeasonPosters = useSeasonPosters,
             useMoreLikeThis = useMoreLikeThis,
             useCollections = useCollections,
+            useWatchProviders = useWatchProviders,
         )
     }
 

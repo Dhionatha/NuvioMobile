@@ -16,6 +16,7 @@ import org.jetbrains.compose.resources.getString
 enum class MetaScreenSectionKey {
     ACTIONS,
     OVERVIEW,
+    WHERE_TO_WATCH,
     PRODUCTION,
     CAST,
     COMMENTS,
@@ -164,6 +165,11 @@ object MetaScreenSettingsRepository {
             key = MetaScreenSectionKey.OVERVIEW,
             titleRes = Res.string.meta_section_overview_title,
             descriptionRes = Res.string.meta_section_overview_description,
+        ),
+        MetaScreenSectionDefinition(
+            key = MetaScreenSectionKey.WHERE_TO_WATCH,
+            titleRes = Res.string.meta_section_where_to_watch_title,
+            descriptionRes = Res.string.meta_section_where_to_watch_description,
         ),
         MetaScreenSectionDefinition(
             key = MetaScreenSectionKey.PRODUCTION,
@@ -455,6 +461,25 @@ object MetaScreenSettingsRepository {
     }
 
     private fun normalizePreferences() {
+        // Payloads saved before this section existed have no entry for it: insert it right after Overview.
+        if (preferences.isNotEmpty() && MetaScreenSectionKey.WHERE_TO_WATCH !in preferences) {
+            val overviewOrder = preferences[MetaScreenSectionKey.OVERVIEW]?.order
+            if (overviewOrder != null) {
+                preferences = preferences.mapValues { (_, preference) ->
+                    if (preference.order > overviewOrder) {
+                        preference.copy(order = preference.order + 1)
+                    } else {
+                        preference
+                    }
+                }.toMutableMap()
+                preferences[MetaScreenSectionKey.WHERE_TO_WATCH] = StoredMetaScreenSectionPreference(
+                    key = MetaScreenSectionKey.WHERE_TO_WATCH.name,
+                    enabled = true,
+                    order = overviewOrder + 1,
+                )
+            }
+        }
+
         val normalized = mutableMapOf<MetaScreenSectionKey, StoredMetaScreenSectionPreference>()
         definitions.sortedBy { definition -> preferences[definition.key]?.order ?: Int.MAX_VALUE }
             .forEachIndexed { index, definition ->
