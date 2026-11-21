@@ -2467,8 +2467,9 @@ private fun ConfiguredMetaSections(
                 DetailWatchProvidersSection(
                     providers = meta.watchProviders,
                     link = meta.watchProvidersLink,
+                    sort = settings.watchProviderSort,
+                    onSortChange = MetaScreenSettingsRepository::setWatchProviderSort,
                     showHeader = showHeader,
-                    horizontalScrollPadding = horizontalScrollPadding,
                     onOpenExternalUrl = onOpenExternalUrl,
                 )
             }

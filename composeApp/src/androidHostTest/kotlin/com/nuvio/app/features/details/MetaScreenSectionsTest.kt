@@ -95,6 +95,26 @@ class MetaScreenSectionsTest {
         assertEquals(5, items[5].order)
     }
 
+    @Test
+    fun watchProviderSortRoundTripsThroughTheProfilePayload() {
+        MetaScreenSettingsRepository.ensureLoaded()
+        MetaScreenSettingsRepository.setWatchProviderSort(WatchProviderAccessType.RENT)
+
+        MetaScreenSettingsRepository.onProfileChanged()
+
+        assertEquals(
+            WatchProviderAccessType.RENT,
+            MetaScreenSettingsRepository.uiState.value.watchProviderSort,
+        )
+    }
+
+    @Test
+    fun watchProviderSortDefaultsToNullOnFreshInstall() {
+        MetaScreenSettingsRepository.ensureLoaded()
+
+        assertEquals(null, MetaScreenSettingsRepository.uiState.value.watchProviderSort)
+    }
+
     private companion object {
         const val LegacyPayload = """
             {"items":[

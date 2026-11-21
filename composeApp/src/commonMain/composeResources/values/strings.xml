@@ -638,7 +638,9 @@
     <string name="detail_watch_provider_free">Free</string>
     <string name="detail_watch_provider_rent">Rent</string>
     <string name="detail_watch_provider_subscription">Subscription</string>
-    <string name="detail_watch_providers_attribution">Streaming availability provided by JustWatch</string>
+    <string name="detail_watch_providers_attribution">Data by JustWatch</string>
+    <string name="detail_watch_providers_sort">Sort</string>
+    <string name="detail_watch_providers_sort_default">Default</string>
     <string name="detail_watch_providers_title">Where to Watch</string>
     <string name="downloads_empty_episodes">No completed episodes</string>
     <string name="downloads_empty_title">No downloads yet</string>
