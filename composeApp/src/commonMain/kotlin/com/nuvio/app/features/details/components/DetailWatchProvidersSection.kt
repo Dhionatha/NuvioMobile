@@ -1,7 +1,5 @@
 package com.nuvio.app.features.details.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,8 +54,6 @@ import nuvio.composeapp.generated.resources.detail_watch_providers_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-private val TileShape = RoundedCornerShape(NuvioTokens.Radius.lg)
-
 /**
  * Fixed acquisition type colors so every offer stays distinguishable in any Nuvio theme.
  * The ads variants share one amber, matching the reference layout.
@@ -69,9 +65,9 @@ private val OfferBuyColor = Color(0xFF4ADE80)
 private val OfferFreeColor = Color(0xFF2DD4BF)
 
 /**
- * "Where to watch" backed by TMDB watch providers (JustWatch data): a horizontal rail of logo
- * tiles with the acquisition type colored underneath. Attribution to JustWatch is required by the
- * TMDB API terms.
+ * "Where to watch" backed by TMDB watch providers (JustWatch data): a horizontal rail of provider
+ * logos with the acquisition type colored underneath, drawn straight on the page with no card
+ * container. Attribution to JustWatch is required by the TMDB API terms.
  */
 @Composable
 fun DetailWatchProvidersSection(
@@ -111,7 +107,7 @@ fun DetailWatchProvidersSection(
                     verticalAlignment = Alignment.Top,
                 ) {
                     items(items = orderedProviders, key = { provider -> provider.id }) { provider ->
-                        WatchProviderTile(
+                        WatchProviderItem(
                             provider = provider,
                             sizing = sizing,
                             onClick = onOpen,
@@ -126,36 +122,28 @@ fun DetailWatchProvidersSection(
 }
 
 @Composable
-private fun WatchProviderTile(
+private fun WatchProviderItem(
     provider: MetaWatchProvider,
     sizing: WatchProviderSectionSizing,
     onClick: (() -> Unit)? = null,
 ) {
-    val tokens = MaterialTheme.nuvio
-    val shape = TileShape
-
     Column(
         modifier = Modifier
             .width(sizing.itemWidth)
-            .clip(shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(sizing.tileSize)
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(NuvioTokens.Border.thin, tokens.colors.borderSubtle, shape),
+            modifier = Modifier.size(sizing.logoSize),
             contentAlignment = Alignment.Center,
         ) {
             if (provider.logo != null) {
                 AsyncImage(
                     model = provider.logo,
                     contentDescription = provider.name,
-                    modifier = Modifier.size(sizing.logoSize),
+                    modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Fit,
                 )
             } else {
@@ -217,20 +205,19 @@ private fun WatchProviderAttribution(onClick: (() -> Unit)?) {
 }
 
 private data class WatchProviderSectionSizing(
-    val tileSize: Dp,
+    val logoSize: Dp,
     val labelSize: TextUnit,
 ) {
     val itemGap: Dp = NuvioTokens.Space.s8
-    val itemWidth: Dp = tileSize + NuvioTokens.Space.s8
-    val logoSize: Dp = tileSize * 0.66f
+    val itemWidth: Dp = logoSize + NuvioTokens.Space.s8
 }
 
 private fun watchProviderSectionSizing(maxWidthDp: Float): WatchProviderSectionSizing =
     when {
-        maxWidthDp >= 1200f -> WatchProviderSectionSizing(tileSize = 96.dp, labelSize = 14.sp)
-        maxWidthDp >= 840f -> WatchProviderSectionSizing(tileSize = 88.dp, labelSize = 13.sp)
-        maxWidthDp >= 600f -> WatchProviderSectionSizing(tileSize = 84.dp, labelSize = 12.sp)
-        else -> WatchProviderSectionSizing(tileSize = 80.dp, labelSize = 12.sp)
+        maxWidthDp >= 1200f -> WatchProviderSectionSizing(logoSize = 96.dp, labelSize = 14.sp)
+        maxWidthDp >= 840f -> WatchProviderSectionSizing(logoSize = 88.dp, labelSize = 13.sp)
+        maxWidthDp >= 600f -> WatchProviderSectionSizing(logoSize = 84.dp, labelSize = 12.sp)
+        else -> WatchProviderSectionSizing(logoSize = 80.dp, labelSize = 12.sp)
     }
 
 private fun WatchProviderOfferLabel.color(): Color = when (this) {
