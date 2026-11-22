@@ -2469,6 +2469,7 @@ private fun ConfiguredMetaSections(
                     link = meta.watchProvidersLink,
                     order = settings.watchProviderOrder,
                     showHeader = showHeader,
+                    horizontalScrollPadding = horizontalScrollPadding,
                     onOpenExternalUrl = onOpenExternalUrl,
                 )
             }
