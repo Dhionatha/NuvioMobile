@@ -1,5 +1,6 @@
 package com.nuvio.app.features.details.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,8 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,16 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -55,19 +51,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Fixed acquisition type colors so every offer stays distinguishable in any Nuvio theme.
- * The ads variants share one amber, matching the reference layout.
- */
-private val OfferSubscriptionColor = Color(0xFF5B9CFF)
-private val OfferWithAdsColor = Color(0xFFFFA726)
-private val OfferRentColor = Color(0xFFA78BFA)
-private val OfferBuyColor = Color(0xFF4ADE80)
-private val OfferFreeColor = Color(0xFF2DD4BF)
-
-/**
  * "Where to watch" backed by TMDB watch providers (JustWatch data): a horizontal rail of provider
- * logos with the acquisition type colored underneath, drawn straight on the page with no card
- * container. Attribution to JustWatch is required by the TMDB API terms.
+ * logos with the acquisition type in a subtle capsule underneath, drawn straight on the page with
+ * no card container. Attribution to JustWatch is required by the TMDB API terms.
  */
 @Composable
 fun DetailWatchProvidersSection(
@@ -129,14 +115,17 @@ private fun WatchProviderItem(
 ) {
     Column(
         modifier = Modifier
-            .width(sizing.itemWidth)
+            .widthIn(min = sizing.minItemWidth, max = sizing.maxItemWidth)
+            .clip(RoundedCornerShape(NuvioTokens.Radius.md))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
-            modifier = Modifier.size(sizing.logoSize),
+            modifier = Modifier
+                .size(sizing.logoSize)
+                .clip(RoundedCornerShape(NuvioTokens.Radius.md)),
             contentAlignment = Alignment.Center,
         ) {
             if (provider.logo != null) {
@@ -156,35 +145,34 @@ private fun WatchProviderItem(
             }
         }
 
-        OfferTypeLabels(provider = provider, sizing = sizing)
+        OfferTypeCapsule(provider = provider)
     }
 }
 
 @Composable
-private fun OfferTypeLabels(
+private fun OfferTypeCapsule(
     provider: MetaWatchProvider,
-    sizing: WatchProviderSectionSizing,
 ) {
     val labels = remember(provider.accessTypes) { watchProviderOfferLabels(provider.accessTypes) }
     if (labels.isEmpty()) return
 
     val texts = labels.map { label -> stringResource(label.labelRes) }
-    val annotated = buildAnnotatedString {
-        labels.forEachIndexed { index, label ->
-            if (index > 0) {
-                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.35f))) { append("|") }
-            }
-            withStyle(SpanStyle(color = label.color())) { append(texts[index]) }
-        }
-    }
 
     Text(
-        text = annotated,
-        style = MaterialTheme.typography.labelMedium.copy(fontSize = sizing.labelSize),
+        text = texts.joinToString(" | "),
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.sp,
+        ),
+        color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.Center,
         maxLines = 3,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .clip(RoundedCornerShape(NuvioTokens.Radius.lg))
+            .background(MaterialTheme.nuvio.colors.overlayHover)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }
 
@@ -206,29 +194,19 @@ private fun WatchProviderAttribution(onClick: (() -> Unit)?) {
 
 private data class WatchProviderSectionSizing(
     val logoSize: Dp,
-    val labelSize: TextUnit,
 ) {
     val itemGap: Dp = NuvioTokens.Space.s8
-    val itemWidth: Dp = logoSize + NuvioTokens.Space.s8
+    val minItemWidth: Dp = logoSize + NuvioTokens.Space.s8
+    val maxItemWidth: Dp = 136.dp
 }
 
 private fun watchProviderSectionSizing(maxWidthDp: Float): WatchProviderSectionSizing =
     when {
-        maxWidthDp >= 1200f -> WatchProviderSectionSizing(logoSize = 96.dp, labelSize = 14.sp)
-        maxWidthDp >= 840f -> WatchProviderSectionSizing(logoSize = 88.dp, labelSize = 13.sp)
-        maxWidthDp >= 600f -> WatchProviderSectionSizing(logoSize = 84.dp, labelSize = 12.sp)
-        else -> WatchProviderSectionSizing(logoSize = 80.dp, labelSize = 12.sp)
+        maxWidthDp >= 1200f -> WatchProviderSectionSizing(logoSize = 63.dp)
+        maxWidthDp >= 840f -> WatchProviderSectionSizing(logoSize = 58.dp)
+        maxWidthDp >= 600f -> WatchProviderSectionSizing(logoSize = 55.dp)
+        else -> WatchProviderSectionSizing(logoSize = 53.dp)
     }
-
-private fun WatchProviderOfferLabel.color(): Color = when (this) {
-    WatchProviderOfferLabel.SUBSCRIPTION -> OfferSubscriptionColor
-    WatchProviderOfferLabel.SUBSCRIPTION_WITH_ADS -> OfferWithAdsColor
-    WatchProviderOfferLabel.RENT -> OfferRentColor
-    WatchProviderOfferLabel.BUY -> OfferBuyColor
-    WatchProviderOfferLabel.FREE -> OfferFreeColor
-    WatchProviderOfferLabel.FREE_WITH_ADS -> OfferWithAdsColor
-    WatchProviderOfferLabel.ADS_ONLY -> OfferWithAdsColor
-}
 
 private val WatchProviderOfferLabel.labelRes: StringResource
     get() = when (this) {
