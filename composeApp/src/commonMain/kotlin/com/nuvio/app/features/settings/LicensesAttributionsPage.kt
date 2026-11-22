@@ -345,7 +345,7 @@ private fun attributionItems(): List<AttributionItem> = listOf(
     AttributionItem(
         titleRes = Res.string.settings_licenses_attributions_justwatch_title,
         bodyRes = Res.string.settings_licenses_attributions_justwatch_body,
-        logo = null,
+        logo = IntegrationLogo.JustWatch,
         link = JustWatchUrl,
     ),
     AttributionItem(
