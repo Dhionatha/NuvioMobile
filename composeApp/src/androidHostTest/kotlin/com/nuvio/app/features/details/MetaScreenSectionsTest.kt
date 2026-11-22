@@ -96,23 +96,61 @@ class MetaScreenSectionsTest {
     }
 
     @Test
-    fun watchProviderSortRoundTripsThroughTheProfilePayload() {
+    fun watchProviderOrderRoundTripsThroughTheProfilePayload() {
         MetaScreenSettingsRepository.ensureLoaded()
-        MetaScreenSettingsRepository.setWatchProviderSort(WatchProviderAccessType.RENT)
+        val customOrder = listOf(
+            WatchProviderOfferCategory.RENT,
+            WatchProviderOfferCategory.SUBSCRIPTION,
+            WatchProviderOfferCategory.BUY,
+            WatchProviderOfferCategory.FREE,
+            WatchProviderOfferCategory.FREE_WITH_ADS,
+            WatchProviderOfferCategory.SUBSCRIPTION_WITH_ADS,
+        )
+        MetaScreenSettingsRepository.setWatchProviderOrder(customOrder)
 
         MetaScreenSettingsRepository.onProfileChanged()
 
         assertEquals(
-            WatchProviderAccessType.RENT,
-            MetaScreenSettingsRepository.uiState.value.watchProviderSort,
+            customOrder,
+            MetaScreenSettingsRepository.uiState.value.watchProviderOrder,
         )
     }
 
     @Test
-    fun watchProviderSortDefaultsToNullOnFreshInstall() {
+    fun watchProviderOrderDefaultsToTheRecommendedPriority() {
         MetaScreenSettingsRepository.ensureLoaded()
 
-        assertEquals(null, MetaScreenSettingsRepository.uiState.value.watchProviderSort)
+        assertEquals(
+            WatchProviderOfferCategory.defaultOrder,
+            MetaScreenSettingsRepository.uiState.value.watchProviderOrder,
+        )
+    }
+
+    @Test
+    fun legacyWatchProviderSortIsMigratedToTheNewOrder() {
+        MetaScreenSettingsStorage.savePayload("""{"watch_provider_sort":"RENT"}""")
+
+        MetaScreenSettingsRepository.onProfileChanged()
+
+        val order = MetaScreenSettingsRepository.uiState.value.watchProviderOrder
+        assertEquals(WatchProviderOfferCategory.RENT, order.first())
+        assertEquals(WatchProviderOfferCategory.defaultOrder.size, order.size)
+        assertEquals(order.size, order.distinct().size)
+    }
+
+    @Test
+    fun resettingTheOrderRestoresTheRecommendedPriority() {
+        MetaScreenSettingsRepository.ensureLoaded()
+        MetaScreenSettingsRepository.setWatchProviderOrder(
+            listOf(WatchProviderOfferCategory.FREE) + WatchProviderOfferCategory.defaultOrder,
+        )
+
+        MetaScreenSettingsRepository.resetWatchProviderOrder()
+
+        assertEquals(
+            WatchProviderOfferCategory.defaultOrder,
+            MetaScreenSettingsRepository.uiState.value.watchProviderOrder,
+        )
     }
 
     private companion object {
