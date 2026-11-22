@@ -85,8 +85,8 @@ fun DetailWatchProvidersSection(
 
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 items(items = orderedProviders, key = { provider -> provider.id }) { provider ->
@@ -143,12 +143,12 @@ private fun WatchProviderItem(
 
     Column(
         modifier = Modifier
-            .widthIn(min = 112.dp, max = 220.dp)
+            .widthIn(min = 64.dp, max = 136.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(vertical = 4.dp, horizontal = 4.dp),
+            .padding(vertical = 4.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         if (provider.logo != null) {
             AsyncImage(
@@ -169,7 +169,6 @@ private fun WatchProviderItem(
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
         )
 
         if (accessLabel.isNotEmpty()) {
@@ -185,7 +184,7 @@ private fun WatchProviderItem(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.08f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }
     }
