@@ -53,7 +53,7 @@ data class MetaScreenSettingsUiState(
     val showOverallRatings: Boolean = true,
     val showParentsGuide: Boolean = true,
     val episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
-    val watchProviderSort: WatchProviderAccessType? = null,
+    val watchProviderOrder: List<WatchProviderOfferCategory> = WatchProviderOfferCategory.defaultOrder,
 )
 
 enum class MetaScreenBackgroundMode {
@@ -142,8 +142,10 @@ private data class StoredMetaScreenSettingsPayload(
     val showParentsGuide: Boolean = true,
     @SerialName("episode_ratings_visibility")
     val episodeRatingsVisibility: String = EpisodeRatingsVisibility.SHOW_ALL.name,
+    @SerialName("watch_provider_order")
+    val watchProviderOrder: List<String> = emptyList(),
     @SerialName("watch_provider_sort")
-    val watchProviderSort: String? = null,
+    val legacyWatchProviderSort: String? = null,
 )
 
 private data class MetaScreenSectionDefinition(
@@ -230,8 +232,16 @@ object MetaScreenSettingsRepository {
     private var showParentsGuide: Boolean = true
     private var episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
     private var posterTransitionEnabled: Boolean = false
-    private var watchProviderSort: WatchProviderAccessType? = null
+    private var watchProviderOrder: List<WatchProviderOfferCategory> = WatchProviderOfferCategory.defaultOrder
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
+
+    private fun resolveWatchProviderOrder(parsed: StoredMetaScreenSettingsPayload): List<WatchProviderOfferCategory> {
+        val stored = parsed.watchProviderOrder.mapNotNull(WatchProviderOfferCategory::parse)
+        if (stored.isNotEmpty()) return WatchProviderOfferCategory.normalize(stored)
+        val legacy = WatchProviderOfferCategory.fromLegacySort(parsed.legacyWatchProviderSort)
+            ?: return WatchProviderOfferCategory.defaultOrder
+        return WatchProviderOfferCategory.normalize(listOf(legacy) + WatchProviderOfferCategory.defaultOrder)
+    }
 
     fun ensureLoaded() {
         if (hasLoaded) return
@@ -254,8 +264,7 @@ object MetaScreenSettingsRepository {
                 showOverallRatings = parsed.showOverallRatings
                 showParentsGuide = parsed.showParentsGuide
                 episodeRatingsVisibility = EpisodeRatingsVisibility.parse(parsed.episodeRatingsVisibility)
-                watchProviderSort = parsed.watchProviderSort
-                    ?.let { raw -> runCatching { WatchProviderAccessType.valueOf(raw) }.getOrNull() }
+                watchProviderOrder = resolveWatchProviderOrder(parsed)
                 preferences = parsed.items.mapNotNull { item ->
                     val key = runCatching { MetaScreenSectionKey.valueOf(item.key) }.getOrNull() ?: return@mapNotNull null
                     key to item
@@ -280,7 +289,7 @@ object MetaScreenSettingsRepository {
         showOverallRatings = true
         showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
-        watchProviderSort = null
+        watchProviderOrder = WatchProviderOfferCategory.defaultOrder
         _uiState.value = MetaScreenSettingsUiState()
         ensureLoaded()
     }
@@ -352,9 +361,26 @@ object MetaScreenSettingsRepository {
         persist()
     }
 
-    fun setWatchProviderSort(sort: WatchProviderAccessType?) {
+    fun setWatchProviderOrder(order: List<WatchProviderOfferCategory>) {
         ensureLoaded()
-        watchProviderSort = sort
+        watchProviderOrder = WatchProviderOfferCategory.normalize(order)
+        publish()
+        persist()
+    }
+
+    fun moveWatchProviderOrder(fromIndex: Int, toIndex: Int) {
+        ensureLoaded()
+        val order = watchProviderOrder.toMutableList()
+        if (fromIndex !in order.indices || toIndex !in order.indices || fromIndex == toIndex) return
+        order.add(toIndex, order.removeAt(fromIndex))
+        watchProviderOrder = order
+        publish()
+        persist()
+    }
+
+    fun resetWatchProviderOrder() {
+        ensureLoaded()
+        watchProviderOrder = WatchProviderOfferCategory.defaultOrder
         publish()
         persist()
     }
@@ -384,7 +410,7 @@ object MetaScreenSettingsRepository {
         showOverallRatings = true
         showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
-        watchProviderSort = null
+        watchProviderOrder = WatchProviderOfferCategory.defaultOrder
         _uiState.value = MetaScreenSettingsUiState()
     }
 
@@ -400,7 +426,7 @@ object MetaScreenSettingsRepository {
         showOverallRatings: Boolean = true,
         showParentsGuide: Boolean = true,
         episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
-        watchProviderSort: WatchProviderAccessType? = null,
+        watchProviderOrder: List<WatchProviderOfferCategory> = WatchProviderOfferCategory.defaultOrder,
     ) {
         ensureLoaded()
         this.backgroundMode = backgroundMode ?: MetaScreenBackgroundMode.fromLegacyCinematic(cinematicBackground)
@@ -412,7 +438,7 @@ object MetaScreenSettingsRepository {
         this.showOverallRatings = showOverallRatings
         this.showParentsGuide = showParentsGuide
         this.episodeRatingsVisibility = episodeRatingsVisibility
-        this.watchProviderSort = watchProviderSort
+        this.watchProviderOrder = WatchProviderOfferCategory.normalize(watchProviderOrder)
         preferences = items.associate { item ->
             item.key to StoredMetaScreenSectionPreference(
                 key = item.key.name,
@@ -444,7 +470,7 @@ object MetaScreenSettingsRepository {
         showOverallRatings = true
         showParentsGuide = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
-        watchProviderSort = null
+        watchProviderOrder = WatchProviderOfferCategory.defaultOrder
         normalizePreferences()
         publish()
         persist()
@@ -537,7 +563,7 @@ object MetaScreenSettingsRepository {
             showOverallRatings = showOverallRatings,
             showParentsGuide = showParentsGuide,
             episodeRatingsVisibility = episodeRatingsVisibility,
-            watchProviderSort = watchProviderSort,
+            watchProviderOrder = watchProviderOrder,
         )
     }
 
@@ -556,7 +582,7 @@ object MetaScreenSettingsRepository {
                     showOverallRatings = showOverallRatings,
                     showParentsGuide = showParentsGuide,
                     episodeRatingsVisibility = episodeRatingsVisibility.name,
-                    watchProviderSort = watchProviderSort?.name,
+                    watchProviderOrder = watchProviderOrder.map { it.name },
                 ),
             ),
         )
