@@ -4,6 +4,8 @@ import com.nuvio.app.features.details.MetaCompany
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaPerson
 import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.details.MetaWatchProvider
+import com.nuvio.app.features.details.WatchProviderAccessType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,6 +34,15 @@ class TmdbMetadataServiceTest {
             language = "en",
             productionCompanies = listOf(MetaCompany(name = "Studio")),
             networks = emptyList(),
+            watchProviders = listOf(
+                MetaWatchProvider(
+                    id = 8,
+                    name = "Netflix",
+                    logo = "https://image.tmdb.org/t/p/w185/netflix.jpg",
+                    accessTypes = listOf(WatchProviderAccessType.SUBSCRIPTION),
+                ),
+            ),
+            watchProvidersLink = "https://www.themoviedb.org/movie/123/watch",
         )
 
         val result = TmdbMetadataService.buildStandaloneMeta(
@@ -50,6 +61,8 @@ class TmdbMetadataServiceTest {
         assertEquals("US, GB", result.country)
         assertEquals(listOf("Cast Member"), result.cast.map { it.name })
         assertEquals(listOf("Studio"), result.productionCompanies.map { it.name })
+        assertEquals(listOf("Netflix"), result.watchProviders.map { it.name })
+        assertEquals("https://www.themoviedb.org/movie/123/watch", result.watchProvidersLink)
     }
 
     @Test
@@ -421,5 +434,140 @@ class TmdbMetadataServiceTest {
 
         assertEquals("Chibi Maruko-chan", titles[57775])
         assertEquals("One Piece", titles[37854])
+    }
+
+    @Test
+    fun `buildWatchProviders merges offer types per provider`() {
+        val region = TmdbWatchProviderRegion(
+            link = "https://www.themoviedb.org/movie/123/watch",
+            flatrate = listOf(
+                TmdbWatchProviderEntry(
+                    providerId = 8,
+                    providerName = "Netflix",
+                    logoPath = "/netflix.jpg",
+                    displayPriority = 1,
+                ),
+                TmdbWatchProviderEntry(
+                    providerId = 1899,
+                    providerName = "Max",
+                    logoPath = "/max.jpg",
+                    displayPriority = 2,
+                ),
+            ),
+            rent = listOf(
+                TmdbWatchProviderEntry(
+                    providerId = 8,
+                    providerName = "Netflix",
+                    logoPath = "/netflix.jpg",
+                    displayPriority = 1,
+                ),
+                TmdbWatchProviderEntry(
+                    providerId = 2,
+                    providerName = "Apple TV",
+                    logoPath = "/apple.jpg",
+                    displayPriority = 3,
+                ),
+            ),
+        )
+
+        val providers = buildWatchProviders(region)
+
+        assertEquals(listOf("Netflix", "Max", "Apple TV"), providers.map { it.name })
+        assertEquals(
+            listOf(WatchProviderAccessType.SUBSCRIPTION, WatchProviderAccessType.RENT),
+            providers.first().accessTypes,
+        )
+        assertEquals(listOf(WatchProviderAccessType.SUBSCRIPTION), providers[1].accessTypes)
+        assertEquals("https://image.tmdb.org/t/p/w185/netflix.jpg", providers.first().logo)
+    }
+
+    @Test
+    fun `buildWatchProviders skips blank names and keeps direct access first`() {
+        val region = TmdbWatchProviderRegion(
+            free = listOf(
+                TmdbWatchProviderEntry(providerId = 1, providerName = "   ", logoPath = "/blank.jpg"),
+                TmdbWatchProviderEntry(
+                    providerId = 2,
+                    providerName = "Pluto TV",
+                    logoPath = "/pluto.jpg",
+                    displayPriority = 5,
+                ),
+            ),
+            ads = listOf(
+                TmdbWatchProviderEntry(
+                    providerId = 2,
+                    providerName = "Pluto TV",
+                    logoPath = "/pluto.jpg",
+                    displayPriority = 5,
+                ),
+            ),
+        )
+
+        val providers = buildWatchProviders(region)
+
+        assertEquals(listOf("Pluto TV"), providers.map { it.name })
+        assertEquals(
+            listOf(WatchProviderAccessType.FREE, WatchProviderAccessType.ADS),
+            providers.single().accessTypes,
+        )
+    }
+
+    @Test
+    fun `watch provider region follows the tmdb language`() {
+        assertEquals("BR", preferredWatchProviderRegion("pt-BR"))
+        assertEquals("US", preferredWatchProviderRegion("en"))
+        assertEquals("PT", preferredWatchProviderRegion("pt"))
+        assertEquals("JP", preferredWatchProviderRegion("ja-JP"))
+    }
+
+    @Test
+    fun `applyEnrichment honors the watch providers module`() {
+        val enrichment = TmdbEnrichment(
+            localizedTitle = "Title",
+            description = null,
+            genres = emptyList(),
+            backdrop = null,
+            logo = null,
+            poster = null,
+            people = emptyList(),
+            director = emptyList(),
+            writer = emptyList(),
+            releaseInfo = null,
+            rating = null,
+            runtimeMinutes = null,
+            ageRating = null,
+            status = null,
+            countries = emptyList(),
+            language = null,
+            productionCompanies = emptyList(),
+            networks = emptyList(),
+            watchProviders = listOf(
+                MetaWatchProvider(
+                    id = 8,
+                    name = "Netflix",
+                    accessTypes = listOf(WatchProviderAccessType.SUBSCRIPTION),
+                ),
+            ),
+            watchProvidersLink = "https://www.themoviedb.org/movie/1/watch",
+        )
+        val base = MetaDetails(id = "1", type = "movie", name = "Title")
+
+        val enabled = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = enrichment,
+            episodeMap = emptyMap(),
+            settings = TmdbSettings(enabled = true),
+        )
+        val disabled = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = enrichment,
+            episodeMap = emptyMap(),
+            settings = TmdbSettings(enabled = true, useWatchProviders = false),
+        )
+
+        assertEquals(listOf("Netflix"), enabled.watchProviders.map { it.name })
+        assertEquals("https://www.themoviedb.org/movie/1/watch", enabled.watchProvidersLink)
+        assertTrue(disabled.watchProviders.isEmpty())
+        assertNull(disabled.watchProvidersLink)
     }
 }

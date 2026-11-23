@@ -88,9 +88,21 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Sync beta channel
-        run: ./scripts/upstream-sync.sh --channel beta
+        id: sync
+        run: |
+          before="$(git rev-parse HEAD)"
+          ./scripts/upstream-sync.sh --channel beta
+          after="$(git rev-parse HEAD)"
+          if [[ "${before}" == "${after}" ]]; then
+            echo "dev already matches its upstream base; skipping the dev release check."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "New commits merged into dev; dispatching the dev release check."
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
 
       - name: Dispatch the dev release check
+        if: steps.sync.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run dev-release.yml --ref dev --repo "${{ github.repository }}"

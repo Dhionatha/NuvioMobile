@@ -40,6 +40,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val TmdbUrl = "https://www.themoviedb.org"
+private const val JustWatchUrl = "https://www.justwatch.com"
 private const val ImdbDatasetsUrl = "https://developer.imdb.com/non-commercial-datasets/"
 private const val TraktUrl = "https://trakt.tv"
 private const val SimklUrl = "https://simkl.com"
@@ -340,6 +341,12 @@ private fun attributionItems(): List<AttributionItem> = listOf(
         bodyRes = Res.string.settings_licenses_attributions_tmdb_body,
         logo = IntegrationLogo.Tmdb,
         link = TmdbUrl,
+    ),
+    AttributionItem(
+        titleRes = Res.string.settings_licenses_attributions_justwatch_title,
+        bodyRes = Res.string.settings_licenses_attributions_justwatch_body,
+        logo = IntegrationLogo.JustWatch,
+        link = JustWatchUrl,
     ),
     AttributionItem(
         titleRes = Res.string.settings_licenses_attributions_trakt_title,

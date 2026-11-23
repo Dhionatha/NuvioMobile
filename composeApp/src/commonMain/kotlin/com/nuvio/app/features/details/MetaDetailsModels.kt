@@ -40,6 +40,24 @@ data class MetaDetails(
     val links: List<MetaLink> = emptyList(),
     val seasonPosters: Map<Int, String> = emptyMap(),
     val videos: List<MetaVideo> = emptyList(),
+    val watchProviders: List<MetaWatchProvider> = emptyList(),
+    val watchProvidersLink: String? = null,
+)
+
+/** Streaming offer type for a provider, ordered by how direct the access is. */
+enum class WatchProviderAccessType {
+    FREE,
+    ADS,
+    SUBSCRIPTION,
+    RENT,
+    BUY,
+}
+
+data class MetaWatchProvider(
+    val id: Int,
+    val name: String,
+    val logo: String? = null,
+    val accessTypes: List<WatchProviderAccessType> = emptyList(),
 )
 
 enum class MoreLikeThisSource {

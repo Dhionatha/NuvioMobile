@@ -63,10 +63,17 @@ import com.nuvio.app.features.details.MetaScreenSectionItem
 import com.nuvio.app.features.details.MetaScreenSectionKey
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsUiState
+import com.nuvio.app.features.details.WatchProviderOfferCategory
 import com.nuvio.app.supportsPosterNavigationMotion
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_reorder
 import nuvio.composeapp.generated.resources.action_reset
+import nuvio.composeapp.generated.resources.detail_watch_provider_buy
+import nuvio.composeapp.generated.resources.detail_watch_provider_free
+import nuvio.composeapp.generated.resources.detail_watch_provider_free_ads
+import nuvio.composeapp.generated.resources.detail_watch_provider_rent
+import nuvio.composeapp.generated.resources.detail_watch_provider_subscription
+import nuvio.composeapp.generated.resources.detail_watch_provider_subscription_ads
 import nuvio.composeapp.generated.resources.settings_homescreen_hidden
 import nuvio.composeapp.generated.resources.settings_homescreen_visible
 import nuvio.composeapp.generated.resources.settings_meta_actions
@@ -113,11 +120,16 @@ import nuvio.composeapp.generated.resources.settings_meta_poster_transition
 import nuvio.composeapp.generated.resources.settings_meta_poster_transition_description
 import nuvio.composeapp.generated.resources.settings_meta_section_appearance
 import nuvio.composeapp.generated.resources.settings_meta_section_sections
+import nuvio.composeapp.generated.resources.settings_meta_section_watch_providers
 import nuvio.composeapp.generated.resources.settings_meta_tab_group_format
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout_description
 import nuvio.composeapp.generated.resources.settings_meta_trailers
 import nuvio.composeapp.generated.resources.settings_meta_trailers_description
+import nuvio.composeapp.generated.resources.settings_meta_watch_provider_order
+import nuvio.composeapp.generated.resources.settings_meta_watch_provider_order_description
+import nuvio.composeapp.generated.resources.settings_meta_where_to_watch
+import nuvio.composeapp.generated.resources.settings_meta_where_to_watch_description
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -242,6 +254,47 @@ internal fun LazyListScope.metaScreenSettingsContent(
             }
         }
     }
+    item {
+        SettingsSection(
+            title = stringResource(Res.string.settings_meta_section_watch_providers),
+            isTablet = isTablet,
+            actions = {
+                NuvioActionLabel(
+                    text = stringResource(Res.string.action_reset),
+                    onClick = MetaScreenSettingsRepository::resetWatchProviderOrder,
+                )
+            },
+        ) {
+            SettingsGroup(isTablet = isTablet) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = if (isTablet) 20.dp else 16.dp,
+                            vertical = if (isTablet) 16.dp else 14.dp,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.settings_meta_watch_provider_order),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = stringResource(Res.string.settings_meta_watch_provider_order_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                SettingsGroupDivider(isTablet = isTablet)
+                WatchProviderOrderReorderableList(
+                    order = uiState.watchProviderOrder,
+                    isTablet = isTablet,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -293,6 +346,91 @@ private fun MetaSectionReorderableList(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WatchProviderOrderReorderableList(
+    order: List<WatchProviderOfferCategory>,
+    isTablet: Boolean,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(
+        lazyListState = lazyListState,
+    ) { from, to ->
+        MetaScreenSettingsRepository.moveWatchProviderOrder(from.index, to.index)
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = if (isTablet) 480.dp else 420.dp),
+        state = lazyListState,
+    ) {
+        itemsIndexed(order, key = { _, category -> category.name }) { index, category ->
+            ReorderableItem(reorderableLazyListState, key = category.name) { isDragging ->
+                val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+                Surface(shadowElevation = elevation) {
+                    Column {
+                        if (index > 0) {
+                            SettingsGroupDivider(isTablet = isTablet)
+                        }
+                        WatchProviderOrderRow(
+                            category = category,
+                            isTablet = isTablet,
+                            dragHandleScope = this@ReorderableItem,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WatchProviderOrderRow(
+    category: WatchProviderOfferCategory,
+    isTablet: Boolean,
+    dragHandleScope: ReorderableCollectionItemScope,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = if (isTablet) 20.dp else 16.dp,
+                vertical = if (isTablet) 16.dp else 14.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(category.labelRes),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(
+            modifier = with(dragHandleScope) {
+                Modifier.draggableHandle(
+                    onDragStarted = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    },
+                    onDragStopped = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    },
+                )
+            },
+            onClick = {},
+        ) {
+            Icon(
+                Icons.Rounded.Menu,
+                contentDescription = stringResource(Res.string.action_reorder),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -560,6 +698,7 @@ private val MetaScreenSectionKey.titleRes: StringResource
     get() = when (this) {
         MetaScreenSectionKey.ACTIONS -> Res.string.settings_meta_actions
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview
+        MetaScreenSectionKey.WHERE_TO_WATCH -> Res.string.settings_meta_where_to_watch
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast
         MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments
@@ -574,6 +713,7 @@ private val MetaScreenSectionKey.descriptionRes: StringResource
     get() = when (this) {
         MetaScreenSectionKey.ACTIONS -> Res.string.settings_meta_actions_description
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview_description
+        MetaScreenSectionKey.WHERE_TO_WATCH -> Res.string.settings_meta_where_to_watch_description
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production_description
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast_description
         MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments_description
@@ -680,3 +820,13 @@ private fun MetaEpisodeCardStylePreview(
         }
     }
 }
+
+private val WatchProviderOfferCategory.labelRes: StringResource
+    get() = when (this) {
+        WatchProviderOfferCategory.SUBSCRIPTION -> Res.string.detail_watch_provider_subscription
+        WatchProviderOfferCategory.SUBSCRIPTION_WITH_ADS -> Res.string.detail_watch_provider_subscription_ads
+        WatchProviderOfferCategory.RENT -> Res.string.detail_watch_provider_rent
+        WatchProviderOfferCategory.BUY -> Res.string.detail_watch_provider_buy
+        WatchProviderOfferCategory.FREE -> Res.string.detail_watch_provider_free
+        WatchProviderOfferCategory.FREE_WITH_ADS -> Res.string.detail_watch_provider_free_ads
+    }

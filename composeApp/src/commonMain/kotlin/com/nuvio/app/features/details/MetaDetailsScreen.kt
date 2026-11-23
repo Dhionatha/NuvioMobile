@@ -118,6 +118,7 @@ import com.nuvio.app.features.details.components.DetailSeriesContent
 import com.nuvio.app.features.details.components.DetailSeriesListEpisode
 import com.nuvio.app.features.details.components.DetailSeriesListHeader
 import com.nuvio.app.features.details.components.DetailTrailersSection
+import com.nuvio.app.features.details.components.DetailWatchProvidersSection
 import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.RatingSheet
 import com.nuvio.app.features.details.components.formatRating
@@ -2349,6 +2350,7 @@ private fun metaSectionHasContent(
     when (key) {
         MetaScreenSectionKey.ACTIONS -> true
         MetaScreenSectionKey.OVERVIEW -> true
+        MetaScreenSectionKey.WHERE_TO_WATCH -> meta.watchProviders.isNotEmpty()
         MetaScreenSectionKey.PRODUCTION -> hasProductionSection
         MetaScreenSectionKey.CAST -> meta.cast.isNotEmpty()
         MetaScreenSectionKey.COMMENTS -> shouldShowComments && (isCommentsLoading || comments.isNotEmpty() || !commentsError.isNullOrBlank())
@@ -2420,6 +2422,7 @@ private fun ConfiguredMetaSections(
         when (key) {
             MetaScreenSectionKey.ACTIONS -> true
             MetaScreenSectionKey.OVERVIEW -> true
+            MetaScreenSectionKey.WHERE_TO_WATCH -> meta.watchProviders.isNotEmpty()
             MetaScreenSectionKey.PRODUCTION -> hasProductionSection
             MetaScreenSectionKey.CAST -> meta.cast.isNotEmpty()
             MetaScreenSectionKey.COMMENTS -> shouldShowComments && (isCommentsLoading || comments.isNotEmpty() || !commentsError.isNullOrBlank())
@@ -2456,6 +2459,16 @@ private fun ConfiguredMetaSections(
                     showOverallRatings = settings.showOverallRatings,
                     showParentsGuide = settings.showParentsGuide,
                     isMdbListActive = isMdbListActive,
+                    horizontalScrollPadding = horizontalScrollPadding,
+                    onOpenExternalUrl = onOpenExternalUrl,
+                )
+            }
+            MetaScreenSectionKey.WHERE_TO_WATCH -> {
+                DetailWatchProvidersSection(
+                    providers = meta.watchProviders,
+                    link = meta.watchProvidersLink,
+                    order = settings.watchProviderOrder,
+                    showHeader = showHeader,
                     horizontalScrollPadding = horizontalScrollPadding,
                     onOpenExternalUrl = onOpenExternalUrl,
                 )
